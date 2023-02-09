@@ -11,7 +11,6 @@ Since 2022 our team has been committed to developing state-of-the-art hypertherm
 Learn more on our [website](https://www.dermatotherma.com/).
 
 ## **Authors**
-Ian Häusler, Tech Lead 
-Davide Paparo, Corporate Lead  
-  
-For any inquiries you can contact us [here](https://www.dermatotherma.com/contact).  
+Ian Häusler, Tech Lead <br>
+Davide Paparo, Corporate Lead <br><br>
+For any inquiries you can contact us [here](https://www.dermatotherma.com/contact).
