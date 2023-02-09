@@ -11,5 +11,5 @@ Since 2022 our team has been committed to developing state-of-the-art hypertherm
 Learn more on our [website](https://www.dermatotherma.com/).
 
 ## **Authors**
-Ian Häusler
+Ian Häusler  
 Davide Paparo
