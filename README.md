@@ -1,7 +1,7 @@
-#**DermatoTherma**
+# **DermatoTherma**
 Source code including unit tests for our medical device CLARA
 
-##**Mission of DermatoTherma**
+## **Mission of DermatoTherma**
 We provide safe and affordable tools for a healthy and more equal world.
 
 We aim to support people worldwide with accessible and easy-to-use tools to combat neglected diseases.
@@ -10,6 +10,6 @@ Since 2022 our team has been committed to developing state-of-the-art hypertherm
 
 Learn more on our [website] (https://www.dermatotherma.com/).
 
-##**Authors**
+## **Authors**
 Ian Häusler
 Davide Paparo
