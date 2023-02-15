@@ -1,0 +1,27 @@
+{
+	"folders": [
+		{
+			"name": "thermomed-device",
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"stm32g4xx_hal.h": "c",
+			"array": "cpp",
+			"deque": "cpp",
+			"string": "cpp",
+			"unordered_map": "cpp",
+			"vector": "cpp",
+			"string_view": "cpp",
+			"initializer_list": "cpp",
+			"cstddef": "cpp",
+			"*.xbm": "cpp",
+			"*.tcc": "cpp",
+			"algorithm": "cpp",
+			"functional": "cpp",
+			"numeric": "cpp",
+			"limits": "cpp"
+		}
+	}
+}
