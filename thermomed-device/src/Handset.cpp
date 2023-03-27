@@ -6,11 +6,10 @@
 #include "TreatmentTimeHandler.h"
 #include "PushButton.h"
 #include "MLX90614.h"
-#include <Wire.h>
+#include "Wireone.h"
 
 
-#define SCL_Handset                 PA9
-#define SDA_Handset                 PA8
+
 
 double avg_val_obj[numReadings]; // array for object avg calculation
 
@@ -35,10 +34,6 @@ HandsetClass::HandsetClass(){
 
 
 void HandsetClass::init(){
-
-    wireOne.setSDA(SDA_Handset);
-    wireOne.setSCL(SCL_Handset);
-    wireOne.begin();
     
 
     TempSensor.begin(MLX90614_I2CADDR, &wireOne);

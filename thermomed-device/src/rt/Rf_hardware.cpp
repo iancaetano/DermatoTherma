@@ -2,27 +2,17 @@
 
 #include <Arduino.h>
 
-<<<<<<< Updated upstream
+#define RF_ADC_FEEDBACK_PHASE       GPIO_PIN_2
+#define RF_ADC_PHASE_GPIO_Port      GPIOC
 
+#define RF_ADC_FEEDBACK_VDC         GPIO_PIN_3
+#define ADC_ADC_VDC_GPIO_Port       GPIOC
 
 #define RF_ADC_FEEDBACK_CURRENT     GPIO_PIN_3
-=======
-#define RF_ADC_FEEDBACK_PHASE                GPIO_PIN_2
-#define ADC_VAC1_GPIO_Port          GPIOC
+#define RF_ADC_CURRENT_GPIO_Port    GPIOA
 
-#define RF_ADC_FEEDBACK_VDC                GPIO_PIN_3
-#define ADC_VAC2_GPIO_Port          GPIOC
-
-#define RF_ADC_FEEDBACK_CURRENT
-         GPIO_PIN_3
->>>>>>> Stashed changes
-#define RF_ADC_FEEDBACK_GPIO_Port   GPIOA
-
-#define RF_ADC_FEEDBACK_PHASE       GPIO_PIN_4
-#define RF_ADC_FEEDBACK_GPIO_Port   GPIOA
-
-#define RF_ADC_FEEDBACK_VDC         GPIO_PIN_6
-#define RF_ADC_FEEDBACK_GPIO_Port   GPIOA
+#define RF_DAC_CONTROL_Pin          GPIO_PIN_4
+#define RF_DAC_CONTROL_GPIO_Port    GPIOA
 
 #define RF_ENABLE_Pin               GPIO_PIN_4
 #define RF_ENABLE_GPIO_Port         GPIOC
@@ -37,11 +27,21 @@ const float Rf_hardware::GAIN_CONTROL_MIN = 0.0f;
 const float Rf_hardware::GAIN_CONTROL_MAX = 3.0f;
 
 static TIM_HandleTypeDef            htim2;
+static ADC_HandleTypeDef            hadc1;
+static DAC_HandleTypeDef            hdac1;
 
 Rf_hardware::Rf_hardware()
 {
     //
 }
+
+
+void
+Rf_hardware::beginDCDC() // Muss aufgerufen werden nachdem Enable kam.
+{
+    
+}
+
 
 void
 Rf_hardware::beginTimer2()
@@ -81,9 +81,10 @@ Rf_hardware::beginTimer2()
     }
 }
 
+void
+Rf_hardware::beginADC1()
+{
 
-<<<<<<< Updated upstream
-=======
     ADC_MultiModeTypeDef    multimode           = {0};
     ADC_ChannelConfTypeDef  sConfig             = {0};
     GPIO_InitTypeDef        GPIO_InitStruct     = {0};
@@ -124,7 +125,7 @@ Rf_hardware::beginTimer2()
 ;
     GPIO_InitStruct.Mode                        = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull                        = GPIO_NOPULL;
-    HAL_GPIO_Init(RF_ADC_FEEDBACK_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(RF_ADC_CURRENT_GPIO_Port, &GPIO_InitStruct);
 
     /* ADC1 interrupt Init */
     HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
@@ -195,7 +196,6 @@ Rf_hardware::beginDAC1()
         Error_Handler();
     }
 }
->>>>>>> Stashed changes
 
 void
 Rf_hardware::beginGpio()
@@ -210,6 +210,7 @@ Rf_hardware::beginGpio()
     HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_DEBUG_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pins : RF_ENABLE_Pin */
+    GPIO_InitStruct.Pin = RF_ENABLE_Pin; 
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -228,25 +229,23 @@ void
 Rf_hardware::begin()
 {
     beginTimer2();
-<<<<<<< Updated upstream
-=======
     beginADC1();
->>>>>>> Stashed changes
     beginGpio();
 
+    /* Calibrate w/o start */
+    if (HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK) {
+        Error_Handler();
+    }
     
     /* Start TIM2 and ADC1 */
 	if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
         Error_Handler();
     }
 
-<<<<<<< Updated upstream
-=======
 	if (HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
         Error_Handler();
     }
 
->>>>>>> Stashed changes
 }
 
 
@@ -262,6 +261,7 @@ Rf_hardware::pke_disable()
 {
     HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_SET);
 }
+
 
 
 
@@ -284,7 +284,7 @@ Rf_hardware::set_debug_pin_state(bool state)
 float
 Rf_hardware::read_adc_voltage()
 {
-    //// READ I FEEDBACK HERE IAN
+    return ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT;
 }
 
 /**
@@ -300,10 +300,14 @@ Rf_hardware::set_dac_voltage(float v)
     } else if (v > GAIN_CONTROL_MAX) {
         v = GAIN_CONTROL_MAX;
     }
-        //// Set VOLTAGE HERE IAN
-    uint32_t value = static_cast<uint32_t>(ADC_12BIT * v / ADC_VCC);
 
+    uint32_t value = static_cast<uint32_t>(ADC_12BIT * v / ADC_VCC);
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, value);
 }
 
-/// WRITE NEW FUNCTION TO READ PHASE HERE IAN
-/// WRITE NEW FUNCTION TO READ VDC HERE IAN
+/*** IRQ Handler ************************************************************/
+extern "C" void
+ADC1_2_IRQHandler(void)
+{
+    HAL_ADC_IRQHandler(&hadc1);
+}

@@ -21,6 +21,7 @@ class Rf_hardware {
         void set_dac_voltage(float v);
 
     private:
+        void beginDCDC();
         void beginTimer2();
         void beginADC1();
         void beginDAC1();
