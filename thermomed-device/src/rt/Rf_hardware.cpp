@@ -2,9 +2,20 @@
 
 #include <Arduino.h>
 
+<<<<<<< Updated upstream
 
 
 #define RF_ADC_FEEDBACK_CURRENT     GPIO_PIN_3
+=======
+#define RF_ADC_FEEDBACK_PHASE                GPIO_PIN_2
+#define ADC_VAC1_GPIO_Port          GPIOC
+
+#define RF_ADC_FEEDBACK_VDC                GPIO_PIN_3
+#define ADC_VAC2_GPIO_Port          GPIOC
+
+#define RF_ADC_FEEDBACK_CURRENT
+         GPIO_PIN_3
+>>>>>>> Stashed changes
 #define RF_ADC_FEEDBACK_GPIO_Port   GPIOA
 
 #define RF_ADC_FEEDBACK_PHASE       GPIO_PIN_4
@@ -71,6 +82,120 @@ Rf_hardware::beginTimer2()
 }
 
 
+<<<<<<< Updated upstream
+=======
+    ADC_MultiModeTypeDef    multimode           = {0};
+    ADC_ChannelConfTypeDef  sConfig             = {0};
+    GPIO_InitTypeDef        GPIO_InitStruct     = {0};
+
+    /** Common config */
+    hadc1.Instance                              = ADC1;
+    hadc1.Init.ClockPrescaler                   = ADC_CLOCK_SYNC_PCLK_DIV4;
+    hadc1.Init.Resolution                       = ADC_RESOLUTION_12B;
+    hadc1.Init.DataAlign                        = ADC_DATAALIGN_RIGHT;
+    hadc1.Init.GainCompensation                 = 0;
+    hadc1.Init.ScanConvMode                     = ADC_SCAN_DISABLE;
+    hadc1.Init.EOCSelection                     = ADC_EOC_SINGLE_CONV;
+    hadc1.Init.LowPowerAutoWait                 = DISABLE;
+    hadc1.Init.ContinuousConvMode               = DISABLE;
+    hadc1.Init.NbrOfConversion                  = 1;
+    hadc1.Init.DiscontinuousConvMode            = DISABLE;
+    hadc1.Init.ExternalTrigConv                 = ADC_EXTERNALTRIG_T2_TRGO;
+    hadc1.Init.ExternalTrigConvEdge             = ADC_EXTERNALTRIGCONVEDGE_RISING;
+    hadc1.Init.DMAContinuousRequests            = DISABLE;
+    hadc1.Init.Overrun                          = ADC_OVR_DATA_PRESERVED;
+    hadc1.Init.OversamplingMode                 = DISABLE;
+
+    /*** MspInit BEGIN ***/
+
+    /* Peripheral clock enable */
+    __HAL_RCC_ADC12_CLK_ENABLE();
+
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    /** ADC1 GPIO Configuration  */
+    GPIO_InitStruct.Pin                         = RF_ADC_FEEDBACK_PHASE|RF_ADC_FEEDBACK_VDC;
+    GPIO_InitStruct.Mode                        = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Pull                        = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin                         = RF_ADC_FEEDBACK_CURRENT
+;
+    GPIO_InitStruct.Mode                        = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Pull                        = GPIO_NOPULL;
+    HAL_GPIO_Init(RF_ADC_FEEDBACK_GPIO_Port, &GPIO_InitStruct);
+
+    /* ADC1 interrupt Init */
+    HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
+
+    /*** MspInit END ***/
+    
+    /* uses HAL_ADC_MspInit() internally, but unused! */
+    if (HAL_ADC_Init(&hadc1) != HAL_OK) {
+        Error_Handler();
+    }
+
+    /** Configure the ADC multi-mode */
+    multimode.Mode                              = ADC_MODE_INDEPENDENT;
+    if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK) {
+        Error_Handler();
+    }
+
+    /** Configure Regular Channel */
+    sConfig.Channel                             = ADC_CHANNEL_4;
+    sConfig.Rank                                = ADC_REGULAR_RANK_1;
+    sConfig.SamplingTime                        = ADC_SAMPLETIME_2CYCLES_5;
+    sConfig.SingleDiff                          = ADC_SINGLE_ENDED;
+    sConfig.OffsetNumber                        = ADC_OFFSET_NONE;
+    sConfig.Offset                              = 0;
+    if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
+        Error_Handler();
+    }
+}
+
+void
+Rf_hardware::beginDAC1()
+{
+    DAC_ChannelConfTypeDef  sConfig             = {0};
+    GPIO_InitTypeDef        GPIO_InitStruct     = {0};
+
+    /*** MspInit BEGIN ***/
+
+    /* Peripheral clock enable */
+    __HAL_RCC_DAC1_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    /** DAC1 GPIO Configuration */
+    GPIO_InitStruct.Pin                         = RF_DAC_CONTROL_Pin;
+    GPIO_InitStruct.Mode                        = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Pull                        = GPIO_NOPULL;
+    HAL_GPIO_Init(RF_DAC_CONTROL_GPIO_Port, &GPIO_InitStruct);
+
+    /*** MspInit END ***/
+
+    /** DAC Initialization */
+    hdac1.Instance = DAC1;
+    if (HAL_DAC_Init(&hdac1) != HAL_OK) {
+        Error_Handler();
+    }
+
+    /** DAC channel OUT1 config */
+    sConfig.DAC_HighFrequency                   = DAC_HIGH_FREQUENCY_INTERFACE_MODE_AUTOMATIC;
+    sConfig.DAC_DMADoubleDataMode               = DISABLE;
+    sConfig.DAC_SignedFormat                    = DISABLE;
+    sConfig.DAC_SampleAndHold                   = DAC_SAMPLEANDHOLD_DISABLE;
+    sConfig.DAC_Trigger                         = DAC_TRIGGER_NONE;
+    sConfig.DAC_Trigger2                        = DAC_TRIGGER_NONE;
+    sConfig.DAC_OutputBuffer                    = DAC_OUTPUTBUFFER_ENABLE;
+    sConfig.DAC_ConnectOnChipPeripheral         = DAC_CHIPCONNECT_EXTERNAL;
+    sConfig.DAC_UserTrimming                    = DAC_TRIMMING_FACTORY;
+    if (HAL_DAC_ConfigChannel(&hdac1, &sConfig, DAC_CHANNEL_1) != HAL_OK) {
+        Error_Handler();
+    }
+}
+>>>>>>> Stashed changes
 
 void
 Rf_hardware::beginGpio()
@@ -103,6 +228,10 @@ void
 Rf_hardware::begin()
 {
     beginTimer2();
+<<<<<<< Updated upstream
+=======
+    beginADC1();
+>>>>>>> Stashed changes
     beginGpio();
 
     
@@ -111,6 +240,13 @@ Rf_hardware::begin()
         Error_Handler();
     }
 
+<<<<<<< Updated upstream
+=======
+	if (HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
+        Error_Handler();
+    }
+
+>>>>>>> Stashed changes
 }
 
 
