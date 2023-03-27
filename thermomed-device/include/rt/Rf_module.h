@@ -108,9 +108,9 @@ class Rf_module {
     // but without current limit.
     inline void set_opamp_on_input_pull_low();
     // returns the raw voltage at the ADC input for the primary side RMS current
-    inline float read_adc_voltage();
+    inline float read_adc_VDC();
     // sets raw voltage DAC connected to the VGA -> controls RF amplitude
-    inline void set_dac_voltage(float v);
+    inline void set_DCDC_output(float v);
     inline float get_dac_voltage();
 
     // control via debugger

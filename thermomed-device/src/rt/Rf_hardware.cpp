@@ -1,6 +1,15 @@
 #include "rt/Rf_hardware.h"
-
 #include <Arduino.h>
+#include "Wireone.h"
+
+#define DCDC_ADDR                   0x74
+#define DCDCREG_REF                 0x00
+#define DCDCREG_IOUT_LIMT           0x02
+#define DCDCREG_VOUT_SR             0x03
+#define DCDCREG_VOUT_FS             0x04
+#define DCDCREG_CDC                 0x05
+#define DCDCREG_MODE                0x06
+#define DCDCREG_STATUS              0x07
 
 #define RF_ADC_FEEDBACK_PHASE       GPIO_PIN_2
 #define RF_ADC_PHASE_GPIO_Port      GPIOC
@@ -23,12 +32,12 @@
 #define ADC_12BIT                   4096.0f
 #define ADC_VCC                     3.3f
 
-const float Rf_hardware::GAIN_CONTROL_MIN = 0.0f;
-const float Rf_hardware::GAIN_CONTROL_MAX = 3.0f;
+const float Rf_hardware::GAIN_CONTROL_MIN = 0x1F;
+const float Rf_hardware::GAIN_CONTROL_MAX = 0x9F;
 
 static TIM_HandleTypeDef            htim2;
 static ADC_HandleTypeDef            hadc1;
-static DAC_HandleTypeDef            hdac1;
+
 
 Rf_hardware::Rf_hardware()
 {
@@ -37,9 +46,36 @@ Rf_hardware::Rf_hardware()
 
 
 void
-Rf_hardware::beginDCDC() // Muss aufgerufen werden nachdem Enable kam.
+Rf_hardware::beginDCDC()
 {
-    
+
+
+    wireOne.beginTransmission(DCDC_ADDR);
+    wireOne.write(DCDCREG_VOUT_SR);
+    wireOne.write(0x03);
+    wireOne.endTransmission();
+
+    wireOne.beginTransmission(DCDC_ADDR);
+    wireOne.write(DCDCREG_VOUT_FS);
+    wireOne.write(0x83);
+    wireOne.endTransmission();
+
+    wireOne.beginTransmission(DCDC_ADDR);
+    wireOne.write(DCDCREG_CDC);
+    wireOne.write(0xA0);
+    wireOne.endTransmission();
+
+    wireOne.beginTransmission(DCDC_ADDR);
+    wireOne.write(DCDCREG_MODE);
+    wireOne.write(0xA8);
+    wireOne.endTransmission();
+
+    wireOne.beginTransmission(DCDC_ADDR);
+    wireOne.write(DCDCREG_CDC);
+    wireOne.write(0xE0);
+    wireOne.endTransmission();
+
+
 }
 
 
@@ -156,46 +192,7 @@ Rf_hardware::beginADC1()
     }
 }
 
-void
-Rf_hardware::beginDAC1()
-{
-    DAC_ChannelConfTypeDef  sConfig             = {0};
-    GPIO_InitTypeDef        GPIO_InitStruct     = {0};
 
-    /*** MspInit BEGIN ***/
-
-    /* Peripheral clock enable */
-    __HAL_RCC_DAC1_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-
-    /** DAC1 GPIO Configuration */
-    GPIO_InitStruct.Pin                         = RF_DAC_CONTROL_Pin;
-    GPIO_InitStruct.Mode                        = GPIO_MODE_ANALOG;
-    GPIO_InitStruct.Pull                        = GPIO_NOPULL;
-    HAL_GPIO_Init(RF_DAC_CONTROL_GPIO_Port, &GPIO_InitStruct);
-
-    /*** MspInit END ***/
-
-    /** DAC Initialization */
-    hdac1.Instance = DAC1;
-    if (HAL_DAC_Init(&hdac1) != HAL_OK) {
-        Error_Handler();
-    }
-
-    /** DAC channel OUT1 config */
-    sConfig.DAC_HighFrequency                   = DAC_HIGH_FREQUENCY_INTERFACE_MODE_AUTOMATIC;
-    sConfig.DAC_DMADoubleDataMode               = DISABLE;
-    sConfig.DAC_SignedFormat                    = DISABLE;
-    sConfig.DAC_SampleAndHold                   = DAC_SAMPLEANDHOLD_DISABLE;
-    sConfig.DAC_Trigger                         = DAC_TRIGGER_NONE;
-    sConfig.DAC_Trigger2                        = DAC_TRIGGER_NONE;
-    sConfig.DAC_OutputBuffer                    = DAC_OUTPUTBUFFER_ENABLE;
-    sConfig.DAC_ConnectOnChipPeripheral         = DAC_CHIPCONNECT_EXTERNAL;
-    sConfig.DAC_UserTrimming                    = DAC_TRIMMING_FACTORY;
-    if (HAL_DAC_ConfigChannel(&hdac1, &sConfig, DAC_CHANNEL_1) != HAL_OK) {
-        Error_Handler();
-    }
-}
 
 void
 Rf_hardware::beginGpio()
@@ -206,7 +203,7 @@ Rf_hardware::beginGpio()
     __HAL_RCC_GPIOC_CLK_ENABLE();
 
     /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOC, RF_ENABLE_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOC, RF_ENABLE_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_DEBUG_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pins : RF_ENABLE_Pin */
@@ -253,13 +250,23 @@ Rf_hardware::begin()
 void
 Rf_hardware::pke_enable()
 {
-    HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_SET);
+    beginDCDC();
 }
 
 void
 Rf_hardware::pke_disable()
 {
-    HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_SET);
+    // Abefahre. TODO: Write all I2C communication within a function.
+    Wire.beginTransmission(DCDC_ADDR);
+    Wire.write(DCDCREG_REF );
+    Wire.write(0x00);
+    Wire.write(0x00);
+    Wire.endTransmission();
+    delay(50);
+
+    HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_RESET);
+    
 }
 
 
@@ -282,9 +289,21 @@ Rf_hardware::set_debug_pin_state(bool state)
  * @return float ADC voltage
  */
 float
-Rf_hardware::read_adc_voltage()
+Rf_hardware::read_adc_VDC()  // Change to jetzige 
 {
-    return ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT;
+    return ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT; // change
+}
+
+float
+Rf_hardware::read_adc_I()
+{ 
+    return ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT; // change
+}
+
+float
+Rf_hardware::read_adc_phi()  
+{
+    return ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT; // change
 }
 
 /**
@@ -293,7 +312,7 @@ Rf_hardware::read_adc_voltage()
  * @param v value between 1.0 and 2.9
  */
 void
-Rf_hardware::set_dac_voltage(float v)
+Rf_hardware::set_DCDC_output(byte v)
 {
     if (v < GAIN_CONTROL_MIN) {
         v = GAIN_CONTROL_MIN;
@@ -301,8 +320,11 @@ Rf_hardware::set_dac_voltage(float v)
         v = GAIN_CONTROL_MAX;
     }
 
-    uint32_t value = static_cast<uint32_t>(ADC_12BIT * v / ADC_VCC);
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, value);
+    Wire.beginTransmission(DCDC_ADDR);
+    Wire.write(DCDCREG_REF );
+    Wire.write(v);
+    Wire.write(0x00);
+    Wire.endTransmission();
 }
 
 /*** IRQ Handler ************************************************************/
@@ -311,3 +333,7 @@ ADC1_2_IRQHandler(void)
 {
     HAL_ADC_IRQHandler(&hadc1);
 }
+
+
+
+//TODO: Status rfegister auslesen und in liste von fehlern hinzufügen

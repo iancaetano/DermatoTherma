@@ -17,14 +17,13 @@ class Rf_hardware {
         void set_opamp_on_input_float();
         void set_opamp_on_input_pull_low();
         static void set_debug_pin_state(bool state);
-        float read_adc_voltage();
-        void set_dac_voltage(float v);
+        float read_adc_VDC();
+        void set_DCDC_output(byte v);
 
     private:
         void beginDCDC();
         void beginTimer2();
         void beginADC1();
-        void beginDAC1();
         void beginGpio();
     
 };

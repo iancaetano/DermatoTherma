@@ -26,8 +26,6 @@ class HandsetClass : public SoftwareTimerHandler{
         void handle();
 
         StartButton startButton;
-
-        TwoWire wireOne = TwoWire();
     
     private:
 
