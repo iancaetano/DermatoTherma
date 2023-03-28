@@ -1,6 +1,7 @@
 
 #include "rt/Temp_ctrl.h"
 
+
 // static float kp = 1.25;
 // static float ki = 0.0015;
 
@@ -29,13 +30,17 @@ Temp_ctrl::Temp_ctrl(Rf_module *rfmod)
 byte Temp_ctrl::update(float t_sp, float t_pv)
 { 
   volatile float p_sat;
-  volatile float output; // voltage on primary side
+  volatile byte output;
+  volatile float current;
 
 
   p_sat =  pi.update(t_sp, t_pv);
   // convert from power cv to cv output to present a linear
-  // behaving plant to the PI      
-  output = sqrt(p_sat * rl_dummy_prim);
+  // behaving plant to the PI
+
+  if (rfmod->IDC<I_min)      
+  output = p_sat/I_min;
+  else output = p_sat/rfmod->IDC;
 
   return output;
 }

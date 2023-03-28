@@ -124,6 +124,8 @@ class Rf_module {
       int pke_enable;
       int opamp_on_input_float; // low -> pull low
       float DCDCOutput;
-      float adc_voltage; // input
+      float adc_VDC; // input
+      float adc_IDC;
+      float adc_PHI;
     } dio;
 };

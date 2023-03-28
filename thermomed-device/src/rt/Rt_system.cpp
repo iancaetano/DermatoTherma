@@ -146,7 +146,7 @@ void Rt_system::rt_callback()
           Rf_module::State rfmodstate = rfmod.get_state();
           if(rfmodstate == Rf_module::State::running) {
             DCDC_out = ctrl.update(iv.temp_sp, iv.temp_pv); 
-            rfmod.set_DCDC_output(DCDC_out);
+            rfmod.set_DCDC_output(convertToHex(DCDC_out));
           }
         }
         break;
@@ -209,5 +209,17 @@ bool Rt_system::write_outputs()
   }
 
   return updated;
+}
+
+byte
+Rt_system::convertToHex(float v) // Old range 3 to 18. New range 1F to 9F
+{
+  under_boundary = 0x1F;
+  upper_boundary = 0x9F;
+  volatile byte range = upper_boundary - under_boundary;
+  volatile int old_range = 15;
+
+  volatile byte output = round(under_boundary + range/old_range*(v-3));
+  return output;
 }
 /******/

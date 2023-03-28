@@ -206,7 +206,6 @@ void Rf_module::assure_safe_operating_point()
 // enables main supply for RF module
 
 
-// Ad read I, read VDC, read phase
 
 
 byte 
@@ -251,13 +250,20 @@ void Rf_module::set_debug_pin_state(bool state)
 // returns the raw voltage at the ADC input for the primary side RMS current
 float Rf_module::read_adc_VDC()
 {
-  dio.adc_voltage = hw.read_adc_VDC();
-  return dio.adc_voltage;
+  dio.adc_VDC = hw.read_adc_VDC();
+  return dio.adc_VDC;
 }
 
 float Rf_module::read_adc_IDC()
 {
-  
+  dio.adc_IDC = hw.read_adc_IDC();
+  return dio.adc_IDC;
+}
+
+float Rf_module::read_adc_phi()
+{
+  dio.adc_PHI = hw.read_adc_phi();
+  return dio.adc_PHI;
 }
 
 // sets raw voltage DAC connected to the VGA -> controls RF amplitude

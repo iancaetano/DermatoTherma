@@ -258,11 +258,11 @@ void
 Rf_hardware::pke_disable()
 {
     // Abefahre. TODO: Write all I2C communication within a function.
-    Wire.beginTransmission(DCDC_ADDR);
-    Wire.write(DCDCREG_REF );
-    Wire.write(0x00);
-    Wire.write(0x00);
-    Wire.endTransmission();
+    wireOne.beginTransmission(DCDC_ADDR);
+    wireOne.write(DCDCREG_REF );
+    wireOne.write(0x00);
+    wireOne.write(0x00);
+    wireOne.endTransmission();
     delay(50);
 
     HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_RESET);
@@ -295,7 +295,7 @@ Rf_hardware::read_adc_VDC()  // Change to jetzige
 }
 
 float
-Rf_hardware::read_adc_I()
+Rf_hardware::read_adc_IDC()
 { 
     return ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT; // change
 }
@@ -320,11 +320,24 @@ Rf_hardware::set_DCDC_output(byte v)
         v = GAIN_CONTROL_MAX;
     }
 
-    Wire.beginTransmission(DCDC_ADDR);
-    Wire.write(DCDCREG_REF );
-    Wire.write(v);
-    Wire.write(0x00);
-    Wire.endTransmission();
+    wireOne.beginTransmission(DCDC_ADDR);
+    wireOne.write(DCDCREG_REF);
+    wireOne.write(v);
+    wireOne.write(0x00);
+    wireOne.endTransmission();
+}
+
+
+byte
+Rf_hardware::readStat()
+{
+    wireOne.beginTransmission(DCDC_ADDR);    
+    wireOne.write(DCDCREG_MODE);                    
+    wireOne.requestFrom(DCDC_ADDR,1);        
+    byte slaveByte1 = wireOne.read();         
+    wireOne.endTransmission();
+
+    return slaveByte1; 
 }
 
 /*** IRQ Handler ************************************************************/
@@ -336,4 +349,4 @@ ADC1_2_IRQHandler(void)
 
 
 
-//TODO: Status rfegister auslesen und in liste von fehlern hinzufügen
+//TODO: Status register auslesen und in liste von fehlern hinzufügen

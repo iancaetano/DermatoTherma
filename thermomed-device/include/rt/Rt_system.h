@@ -92,8 +92,12 @@ class Rt_system {
     Countdown_timer start_time{start_delay_ms};
     float temp_last;
     bool checked;
+
+    byte under_boundary;
+    byte upper_boundary;
    
 
     inline bool read_inputs();
     inline bool write_outputs(); // prepare outputs for main loop
+    byte convertToHex(float v);
 };
