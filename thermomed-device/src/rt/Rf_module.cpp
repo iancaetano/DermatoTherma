@@ -41,9 +41,9 @@ void Rf_module::enable()
   if(state == State::off || state == State::tripped) {
     trip_cause = Trip_cause::undef;
     state = State::enabling;
-    // transition into first first step of enabling sequence 
+    // transition into first step of enabling sequence 
     rf_enabling_step = Rf_enabling_step::s1_power_up;
-    set_primary_voltage_rms(0);
+    set_DCDC_output(0);
     pke_enable();
     seq_timer.restart_with_new_time(Delay::pke_start);
   }
@@ -52,21 +52,19 @@ void Rf_module::enable()
 // moves from any state to off
 void Rf_module::power_off()
 {
-  set_DCDC_output(0);
-  set_opamp_on_input_float();
   pke_disable();
+  
   module_reenable_lockout_timer.restart();
   state = State::off;
   trip_cause = Trip_cause::undef;
 }
 
 // no effect outside of running state
-void Rf_module::set_primary_voltage_rms(float v)
+void Rf_module::set_DCDC_output(byte v)
 {
   //if(state == State::running) {
-    float v_sat = limit(v, U_min, U_max);
-    float adc_voltage = v_sat/(G_dac_to_pri*V_vga);
-    set_DCDC_output(adc_voltage);
+    byte v_sat = limit(v, U_min, U_max);
+    set_DCDC_output(v_sat);
   //}
 }
 
@@ -75,7 +73,7 @@ float Rf_module::get_primary_voltage_rms()
 {
   float v_rms;
   if(state != State::off) {
-    v_rms = G_dac_to_pri*get_dac_voltage();
+    v_rms = G_dac_to_pri*get_DCDCOutput();
   } else {
     v_rms = (float)0;
   }
@@ -83,10 +81,10 @@ float Rf_module::get_primary_voltage_rms()
 }
 
 // only valid in running state
-float Rf_module::get_primary_current_rms()
+float Rf_module::get_IDC()
 {
   if(state != State::off)
-    return primary_current_rms;
+    return IDC;
   else
     return (float)0;
 }
@@ -146,7 +144,7 @@ void Rf_module::state_enabling()
           break;
         case Rf_enabling_step::s3_enable_current_limit:
             next_step = Rf_enabling_step::s4_stabilize_readings;
-            set_primary_voltage_rms(U_min);
+            set_DCDC_output(U_min);
             duration = Delay::stabilize_readings;
           break;
         case Rf_enabling_step::s4_stabilize_readings:
@@ -167,26 +165,33 @@ void Rf_module::state_enabling()
 //TODO: add fiter for estimates
 void Rf_module::update_readings()
 {
-  volatile float dac = get_dac_voltage();
-  volatile float vprim_rms = V_vga*dac*G_dac_to_pri;
-  volatile float vadc = read_adc_VDC();
-  primary_current_rms = vadc*G_i_pri_to_adc;
-  load_resistance_estimate = vprim_rms / primary_current_rms * T_ratio;
-  power_estimate = primary_current_rms * vprim_rms;
+  
+  volatile float dac = get_DCDCOutput();
+  volatile float VDC = read_adc_VDC();
+  IDC = read_adc_IDC();
+  load_resistance_estimate = VDC/IDC;
+  power_estimate = IDC * VDC;
+  statRegDCDC = readStatReg();
 }
 
 void Rf_module::assure_safe_operating_point()
 {
   Trip_cause cause = Trip_cause::undef;
 
-  if (primary_current_rms < I_min_running)
+  if (IDC < I_min_running)
     cause = Trip_cause::opamp_protection;
-  else if (primary_current_rms > I_max)
+  else if (IDC > I_max)
     cause = Trip_cause::overcurrent_measured;
   else if (load_resistance_estimate < Rl_min)
     cause = Trip_cause::rl_estimate_too_low;
   else if (load_resistance_estimate > Rl_max)
     cause = Trip_cause::rl_estimate_too_low;
+  else if (statRegDCDC & (1<<7))
+    cause =Trip_cause::short_circuit;
+  else if (statRegDCDC & (1<<6))
+    cause =Trip_cause::overcurrent;
+  else if (statRegDCDC & (1<<5))
+    cause =Trip_cause::overvoltage;
 
   if(cause != Trip_cause::undef) {
     power_off();
@@ -199,6 +204,18 @@ void Rf_module::assure_safe_operating_point()
 // ** hardware interface to RF module
 //    (only set IO pin states with this functions)
 // enables main supply for RF module
+
+
+// Ad read I, read VDC, read phase
+
+
+byte 
+Rf_module::readStatReg()
+{
+  hw.readStat();
+}
+
+
 void Rf_module::pke_enable()
 {
   hw.pke_enable();
@@ -238,14 +255,19 @@ float Rf_module::read_adc_VDC()
   return dio.adc_voltage;
 }
 
-// sets raw voltage DAC connected to the VGA -> controls RF amplitude
-void Rf_module::set_DCDC_output(float v)
+float Rf_module::read_adc_IDC()
 {
-  hw.set_DCDC_output(v);
-  dio.dac_voltage = v;
+  
 }
 
-float Rf_module::get_dac_voltage()
+// sets raw voltage DAC connected to the VGA -> controls RF amplitude
+void Rf_module::set_DCDC_output(byte v)
 {
-  return dio.dac_voltage;
+  hw.set_DCDC_output(v);
+  dio.DCDCOutput = v;
+}
+
+float Rf_module::get_DCDCOutput()
+{
+  return dio.DCDCOutput;
 }

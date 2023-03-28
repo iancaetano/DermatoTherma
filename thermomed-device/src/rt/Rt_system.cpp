@@ -89,7 +89,7 @@ void Rt_system::get_status(struct Rt_system::Rt_out &s) // output
 void Rt_system::rt_callback()
 {
   bool new_ml_vals;
-  float u_sat_cv;
+  byte DCDC_out;
   Safety_supervisor::Assessment_result res;
   bool hardware_err;
   bool safety_err;
@@ -145,8 +145,8 @@ void Rt_system::rt_callback()
         } else {
           Rf_module::State rfmodstate = rfmod.get_state();
           if(rfmodstate == Rf_module::State::running) {
-            u_sat_cv = ctrl.update(iv.temp_sp, iv.temp_pv); 
-            rfmod.set_primary_voltage_rms(u_sat_cv); // Glaube hier können wir die einheitssprungantwort Messen. (u_sat_cv = 1)
+            DCDC_out = ctrl.update(iv.temp_sp, iv.temp_pv); 
+            rfmod.set_DCDC_output(DCDC_out);
           }
         }
         break;

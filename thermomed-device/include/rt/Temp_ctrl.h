@@ -10,7 +10,7 @@ class Temp_ctrl {
     Temp_ctrl(Rf_module *rfmod);
     inline void restart() { pi.restart(); }
     inline void stop() { pi.stop(); }
-    float update(float t_sp, float t_pv); // returns new u_sat_cv
+    float update(float t_sp, float t_pv); // returns new DCDC_out
 
   private:
     Rf_module *rfmod;

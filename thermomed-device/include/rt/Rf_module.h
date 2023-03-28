@@ -10,7 +10,8 @@ class Rf_module {
   public:
     enum class State {undef, off, enabling, running, tripped};
     enum class Trip_cause {undef, opamp_protection, overcurrent_measured,
-                           rl_estimate_too_low, rl_estimate_too_high};
+                           rl_estimate_too_low, rl_estimate_too_high, short_circuit,
+                           overcurrent, overvoltage};
 
     Rf_module();
 
@@ -23,17 +24,20 @@ class Rf_module {
     void power_off(); // moves from any state to off
 
     // no effect outside of running state
-    void set_primary_voltage_rms(float v);
+    void set_DCDC_output(byte v);
 
     // only valid in running state
     float get_primary_voltage_rms();
-    float get_primary_current_rms();
+    float get_IDC();
     float get_load_resistance_estimate();
     float get_power_estimate();
+    byte readStatReg();
 
     float get_max_primary_voltage_rms();
 
     void set_debug_pin_state(bool state);
+
+     float IDC; // A
 
   private:
     enum class Rf_enabling_step {
@@ -62,13 +66,14 @@ class Rf_module {
     float Rl_min = 100.0; // minimal supported load resistance
     float Rl_max = 1000.0; // maximal supported load resistance
     float V_vga = 0.041043; //
-    float U_min = 3;   // minimum voltage at amplifier output (RMS) (make > 0V)
-    float U_max = 18; // maximum possible voltage at amplifier output (RMS) (note: could be dominated by DAC limit)
+    float U_min = 0x1F;   // minimum voltage at amplifier output (RMS) (make > 0V)
+    float U_max = 0x9F; // maximum possible voltage at amplifier output (RMS) (note: could be dominated by DAC limit)
     float I_min_running = 0.020; // minimum measured current when running [A_RMS]
     float I_max = 0.7;
     float G_tr_pri_to_sec = 3; // gain: primary voltage -> secundary voltage  [V/V]
     float G_i_pri_to_adc = 0.2614; // gain: primary RMS current -> ADC voltage [V/A_RMS]
     float G_dac_to_pri = 102.81; // gain:  DAC voltage -> primary voltage [V_RMS/V]
+    byte statRegDCDC;
 
     Rf_hardware hw;
     State state;
@@ -78,7 +83,7 @@ class Rf_module {
     Countdown_timer module_reenable_lockout_timer{Delay::pke_start};
     Countdown_timer seq_timer{0};
 
-    float primary_current_rms; // A
+   
     float load_resistance_estimate; // Ohm
     float power_estimate; // W
   
@@ -109,15 +114,16 @@ class Rf_module {
     inline void set_opamp_on_input_pull_low();
     // returns the raw voltage at the ADC input for the primary side RMS current
     inline float read_adc_VDC();
+    inline float read_adc_IDC();
     // sets raw voltage DAC connected to the VGA -> controls RF amplitude
-    inline void set_DCDC_output(float v);
-    inline float get_dac_voltage();
+    inline void set_DCDC_output(byte v);
+    inline float get_DCDCOutput();
 
     // control via debugger
     volatile struct Dummy_ios {
       int pke_enable;
       int opamp_on_input_float; // low -> pull low
-      float dac_voltage;
+      float DCDCOutput;
       float adc_voltage; // input
     } dio;
 };

@@ -26,16 +26,17 @@ Temp_ctrl::Temp_ctrl(Rf_module *rfmod)
   pi.set_output_limits(power_cv_min, power_cv_max); // in terms of power //TODO use limit from rfmod
 }
 
-float Temp_ctrl::update(float t_sp, float t_pv)
+byte Temp_ctrl::update(float t_sp, float t_pv)
 { 
   volatile float p_sat;
-  volatile float u_sat; // voltage on primary side
+  volatile float output; // voltage on primary side
 
 
   p_sat =  pi.update(t_sp, t_pv);
   // convert from power cv to cv output to present a linear
   // behaving plant to the PI      
-  u_sat = sqrt(p_sat * rl_dummy_prim);
-  return u_sat;
+  output = sqrt(p_sat * rl_dummy_prim);
+
+  return output;
 }
 /****/
