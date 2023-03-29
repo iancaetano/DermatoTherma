@@ -37,6 +37,7 @@ const float Rf_hardware::GAIN_CONTROL_MAX = 0x9F;
 
 static TIM_HandleTypeDef            htim2;
 static ADC_HandleTypeDef            hadc1;
+static ADC_HandleTypeDef            hadc12;
 
 
 Rf_hardware::Rf_hardware()
@@ -48,8 +49,7 @@ Rf_hardware::Rf_hardware()
 void
 Rf_hardware::beginDCDC()
 {
-
-
+    
     wireOne.beginTransmission(DCDC_ADDR);
     wireOne.write(DCDCREG_VOUT_SR);
     wireOne.write(0x03);
@@ -74,7 +74,6 @@ Rf_hardware::beginDCDC()
     wireOne.write(DCDCREG_CDC);
     wireOne.write(0xE0);
     wireOne.endTransmission();
-
 
 }
 
@@ -179,8 +178,13 @@ Rf_hardware::beginADC1()
     if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK) {
         Error_Handler();
     }
+}
 
-    /** Configure Regular Channel */
+void
+Rf_hardware::ADC_Select_CH4()
+{
+    ADC_ChannelConfTypeDef  sConfig             = {0};
+
     sConfig.Channel                             = ADC_CHANNEL_4;
     sConfig.Rank                                = ADC_REGULAR_RANK_1;
     sConfig.SamplingTime                        = ADC_SAMPLETIME_2CYCLES_5;
@@ -192,59 +196,38 @@ Rf_hardware::beginADC1()
     }
 }
 
-
-
 void
-Rf_hardware::beginGpio()
+Rf_hardware::ADC_Select_CH8()
 {
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    ADC_ChannelConfTypeDef  sConfig             = {0};
 
-    /* GPIO Ports Clock Enable */
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-
-    /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOC, RF_ENABLE_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_DEBUG_Pin, GPIO_PIN_RESET);
-
-    /*Configure GPIO pins : RF_ENABLE_Pin */
-    GPIO_InitStruct.Pin = RF_ENABLE_Pin; 
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(RF_ENABLE_GPIO_Port, &GPIO_InitStruct);
-
-    /*Configure GPIO pins : RF_DEBUG_Pin */
-    GPIO_InitStruct.Pin = RF_DEBUG_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = 0; // macroname?
-    HAL_GPIO_Init(RF_DEBUG_GPIO_Port, &GPIO_InitStruct);
+    sConfig.Channel                             = ADC_CHANNEL_8;
+    sConfig.Rank                                = ADC_REGULAR_RANK_1;
+    sConfig.SamplingTime                        = ADC_SAMPLETIME_2CYCLES_5;
+    sConfig.SingleDiff                          = ADC_SINGLE_ENDED;
+    sConfig.OffsetNumber                        = ADC_OFFSET_NONE;
+    sConfig.Offset                              = 0;
+    if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
+        Error_Handler();
+    }
 }
 
 void
-Rf_hardware::begin()
+Rf_hardware::ADC_Select_CH9()
 {
-    beginTimer2();
-    beginADC1();
-    beginGpio();
 
-    /* Calibrate w/o start */
-    if (HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK) {
+    ADC_ChannelConfTypeDef  sConfig             = {0};
+
+    sConfig.Channel                             = ADC_CHANNEL_9;
+    sConfig.Rank                                = ADC_REGULAR_RANK_1;
+    sConfig.SamplingTime                        = ADC_SAMPLETIME_2CYCLES_5;
+    sConfig.SingleDiff                          = ADC_SINGLE_ENDED;
+    sConfig.OffsetNumber                        = ADC_OFFSET_NONE;
+    sConfig.Offset                              = 0;
+    if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
         Error_Handler();
     }
-    
-    /* Start TIM2 and ADC1 */
-	if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
-        Error_Handler();
-    }
-
-	if (HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
-        Error_Handler();
-    }
-
 }
-
 
 /*** HW interface ***********************************************************/
 void
@@ -270,9 +253,6 @@ Rf_hardware::pke_disable()
 }
 
 
-
-
-
 void
 Rf_hardware::set_debug_pin_state(bool state)
 {
@@ -289,21 +269,40 @@ Rf_hardware::set_debug_pin_state(bool state)
  * @return float ADC voltage
  */
 float
-Rf_hardware::read_adc_VDC()  // Change to jetzige 
+Rf_hardware::read_adc_VDC()  // input = 3.3V @ 30VDC. 
 {
-    return ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT; // change
+    ADC_Select_CH9();
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+	float ADC_VAL = ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT;
+	HAL_ADC_Stop(&hadc1);
+
+    float V = ADC_VAL*30;
+    return ADC_VAL;
 }
 
 float
-Rf_hardware::read_adc_IDC()
+Rf_hardware::read_adc_IDC() // 1.2V @ 3A. Why so low-> DCDCspecs. Still Genauigkeit von 2-3mA. -> Enough
 { 
-    return ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT; // change
+    ADC_Select_CH4();
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, 1000);
+	float ADC_VAL = ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT;
+	HAL_ADC_Stop(&hadc1);
+
+    float I = ADC_VAL/0.4;
+    return I;
 }
 
 float
-Rf_hardware::read_adc_phi()  
+Rf_hardware::read_adc_phi() 
 {
-    return ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT; // change
+    ADC_Select_CH8();
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, 1000);
+	float ADC_VAL = ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT;
+	HAL_ADC_Stop(&hadc1);
+    return ADC_VAL;
 }
 
 /**
@@ -346,7 +345,3 @@ ADC1_2_IRQHandler(void)
 {
     HAL_ADC_IRQHandler(&hadc1);
 }
-
-
-
-//TODO: Status register auslesen und in liste von fehlern hinzufügen

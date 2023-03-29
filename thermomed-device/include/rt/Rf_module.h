@@ -33,6 +33,7 @@ class Rf_module {
     float get_power_estimate();
     byte readStatReg();
 
+
     float get_max_primary_voltage_rms();
 
     void set_debug_pin_state(bool state);
@@ -115,6 +116,7 @@ class Rf_module {
     // returns the raw voltage at the ADC input for the primary side RMS current
     inline float read_adc_VDC();
     inline float read_adc_IDC();
+    float read_adc_phi();
     // sets raw voltage DAC connected to the VGA -> controls RF amplitude
     inline void set_DCDC_output(byte v);
     inline float get_DCDCOutput();
