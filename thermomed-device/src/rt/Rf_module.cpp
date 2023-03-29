@@ -42,7 +42,7 @@ void Rf_module::enable()
     trip_cause = Trip_cause::undef;
     state = State::enabling;
     // transition into first step of enabling sequence 
-    rf_enabling_step = Rf_enabling_step::s1_power_up;
+    rf_enabling_step = Rf_enabling_step::s1_stabilize_readings;
     set_DCDC_output(0);
     pke_enable();
     seq_timer.restart_with_new_time(Delay::pke_start);
@@ -132,27 +132,12 @@ void Rf_module::state_enabling()
       switch (rf_enabling_step) {
         case Rf_enabling_step::s0_undef:
           break;
-        case Rf_enabling_step::s1_power_up:
-            next_step = Rf_enabling_step::s2_opamp_enable;
-            set_opamp_on_input_pull_low();// activate opamp
-            duration = Delay::opamp_enable;
-          break;
-        case Rf_enabling_step::s2_opamp_enable:
-            next_step = Rf_enabling_step::s3_enable_current_limit;
-            set_opamp_on_input_float();
-            duration = Delay::current_limit_enable;
-          break;
-        case Rf_enabling_step::s3_enable_current_limit:
-            next_step = Rf_enabling_step::s4_stabilize_readings;
-            set_DCDC_output(U_min);
-            duration = Delay::stabilize_readings;
-          break;
-        case Rf_enabling_step::s4_stabilize_readings:
-            next_step = Rf_enabling_step::s5_running;
+        case Rf_enabling_step::s1_stabilize_readings:
+            next_step = Rf_enabling_step::s2_running;
             update_readings();
             state = State::running;
           break;
-        case Rf_enabling_step::s5_running:
+        case Rf_enabling_step::s2_running:
             // we should not arrive here
           break;
       }
@@ -228,18 +213,10 @@ void Rf_module::pke_disable()
 }
 // Floats AD4870 ON_ pin -> if the AD4870 is already on, it activates
 // the 1A current limit. Use this as default state at power up.
-void Rf_module::set_opamp_on_input_float()
-{
-  hw.set_opamp_on_input_float();
-  dio.opamp_on_input_float = true;
-}
+
 // Takes AD4870 ON_ to LOW -> if the its output was off it switches now on,
 // but without current limit.
-void Rf_module::set_opamp_on_input_pull_low()
-{
-  hw.set_opamp_on_input_pull_low();
-  dio.opamp_on_input_float = false;
-}
+
 
 
 void Rf_module::set_debug_pin_state(bool state)
