@@ -221,10 +221,10 @@ Rf_hardware::beginADC2()
     }
 
     /** Configure the ADC multi-mode */
-    multimode.Mode                              = ADC_MODE_INDEPENDENT;
-    if (HAL_ADCEx_MultiModeConfigChannel(&hadc2, &multimode) != HAL_OK) {
-        Error_Handler();
-    }
+    //multimode.Mode                              = ADC_MODE_INDEPENDENT;
+    //if (HAL_ADCEx_MultiModeConfigChannel(&hadc2, &multimode) != HAL_OK) {
+    //    Error_Handler();
+    //}
 }
 
 void
@@ -287,7 +287,7 @@ Rf_hardware::pke_enable()
 void
 Rf_hardware::pke_disable()
 {
-    writeDCDCOutToWireOne(DCDC_ADDR,DCDCREG_REF,0x00);
+    //writeDCDCOutToWireOne(DCDC_ADDR,DCDCREG_REF,0x00);
 
     HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_RESET);
     
