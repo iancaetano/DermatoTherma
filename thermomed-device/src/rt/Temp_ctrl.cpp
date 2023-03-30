@@ -31,8 +31,6 @@ byte Temp_ctrl::update(float t_sp, float t_pv)
 { 
   volatile float p_sat;
   volatile byte output;
-  volatile float current;
-
 
   p_sat =  pi.update(t_sp, t_pv);
   // convert from power cv to cv output to present a linear

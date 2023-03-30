@@ -1,5 +1,6 @@
-
+#include "Arduino.h"
 #pragma once
+
 
 class Rf_hardware {
     private:
@@ -14,21 +15,24 @@ class Rf_hardware {
         /* HW interface */
         void pke_enable();
         void pke_disable();
-        static void set_debug_pin_state(bool state);
         float read_adc_VDC();
         float read_adc_IDC();
         float read_adc_phi();
-        void set_DCDC_output(byte v);
+        void set_DCDC_output_hw(byte v);
         byte readStat();
+        void writeToWireOne(byte ADDR,byte REG, byte value);
+        void writeDCDCOutToWireOne(byte ADDR,byte REG, byte value);
+        byte readfromWireOne(byte ADDR,byte REG);
 
     private:
         void beginDCDC();
         void beginTimer2();
         void beginADC1();
+        void beginADC2();
         void beginGpio();
         void ADC_Select_CH4();
-        void ADC_Select_CH8();
-        void ADC_Select_CH9();
+        void ADC_Select_CH11();
+        void ADC_Select_CH3();
         
     
 };

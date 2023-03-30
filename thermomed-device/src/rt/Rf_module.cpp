@@ -64,7 +64,7 @@ void Rf_module::set_DCDC_output(byte v)
 {
   //if(state == State::running) {
     byte v_sat = limit(v, U_min, U_max);
-    set_DCDC_output(v_sat);
+    hw.set_DCDC_output_hw(v_sat);
   //}
 }
 
@@ -151,7 +151,6 @@ void Rf_module::state_enabling()
 void Rf_module::update_readings()
 {
   
-  volatile float dac = get_DCDCOutput();
   volatile float VDC = read_adc_VDC();
   IDC = read_adc_IDC();
   load_resistance_estimate = VDC/IDC;
@@ -196,7 +195,7 @@ void Rf_module::assure_safe_operating_point()
 byte 
 Rf_module::readStatReg()
 {
-  hw.readStat();
+  return hw.readStat();
 }
 
 
@@ -219,10 +218,7 @@ void Rf_module::pke_disable()
 
 
 
-void Rf_module::set_debug_pin_state(bool state)
-{
-  hw.set_debug_pin_state(state);
-}
+
 
 // returns the raw voltage at the ADC input for the primary side RMS current
 float Rf_module::read_adc_VDC()
@@ -244,11 +240,7 @@ float Rf_module::read_adc_phi()
 }
 
 // sets raw voltage DAC connected to the VGA -> controls RF amplitude
-void Rf_module::set_DCDC_output(byte v)
-{
-  hw.set_DCDC_output(v);
-  dio.DCDCOutput = v;
-}
+
 
 float Rf_module::get_DCDCOutput()
 {

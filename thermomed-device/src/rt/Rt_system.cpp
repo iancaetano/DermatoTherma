@@ -94,8 +94,6 @@ void Rt_system::rt_callback()
   bool hardware_err;
   bool safety_err;
 
-  rfmod.set_debug_pin_state(true);
-
   new_ml_vals = read_inputs(); // receive inputs from main loop
 
   rfmod.update(); // update RF module state (read inputs/make sure it runs safe)
@@ -169,7 +167,6 @@ void Rt_system::rt_callback()
     write_outputs(); // prepare outputs for main loop
   }
 
-  rfmod.set_debug_pin_state(false);
 }
 
 /*** savely access main loop IOs ***/

@@ -2,8 +2,8 @@
 
 #include "Arduino.h"
 #include "SoftwareTimer.h"
-#include "main.h"
 #include "PushButton.h"
+#include <Wire.h>
 
 #define numReadings                 20      // define number of readings for average
 
@@ -11,6 +11,9 @@
 class HandsetClass : public SoftwareTimerHandler{
     public:
     
+
+        TwoWire wireOne = TwoWire();
+
         HandsetClass();
         
         void init();
@@ -26,6 +29,10 @@ class HandsetClass : public SoftwareTimerHandler{
         void handle();
 
         StartButton startButton;
+
+        void writeToWireOne(byte ADDR,byte REG, byte value);
+        void writeDCDCOutToWireOne(byte ADDR,byte REG, byte value);
+        byte readfromWireOne(byte ADDR,byte REG);
     
     private:
 
