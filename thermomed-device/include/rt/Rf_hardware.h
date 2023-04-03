@@ -8,6 +8,8 @@ class Rf_hardware {
         static const float GAIN_CONTROL_MIN;
         static const float GAIN_CONTROL_MAX;
         
+
+        
     public:
         Rf_hardware();
         void begin();
@@ -26,13 +28,14 @@ class Rf_hardware {
 
     private:
         void beginDCDC();
-        void beginTimer2();
-        void beginADC1();
-        void beginADC2();
-        void beginGpio();
-        void ADC_Select_CH4();
-        void ADC_Select_CH11();
-        void ADC_Select_CH3();
+        void MX_GPIO_Init(void);
+        void MX_DMA_Init(void);
+        void MX_ADC1_Init(void);
+        void MX_ADC2_Init(void);
+        void MX_TIM2_Init(void);
+        void DMA1_Channel1_IRQHandler(void);
+        void DMA1_Channel2_IRQHandler(void);
+
         
     
 };

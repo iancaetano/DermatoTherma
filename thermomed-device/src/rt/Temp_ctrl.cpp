@@ -19,7 +19,7 @@ static float power_cv_max = 6;    //TODO use limit from rfmod
 
 /*** Supervise treatment using, RF module and RT system ***/
 Temp_ctrl::Temp_ctrl(Rf_module *rfmod)
-  : pi(1000*(uint32_t)pi_sample_period_ms, kp, ki, kd)
+  : pi(1000*(uint32_t)20, kp, ki, kd) //20 was pi_sample_period_ms but throw error.
 {
   this->stop();
   this->rfmod = rfmod;
