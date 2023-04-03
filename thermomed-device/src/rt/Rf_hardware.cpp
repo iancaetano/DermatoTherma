@@ -3,7 +3,7 @@
 #include "Handset.h"
 #include "main.h"
 
-#define ADC_BUF_SIZE                8
+#define ADC_BUF_SIZE                16
 #define ADC_BUF_SIZE2               2
 
 #define DCDC_ADDR                   0x74
@@ -43,7 +43,6 @@ uint32_t ADC_buffer[ADC_BUF_SIZE];
 uint32_t ADC_buffer2[ADC_BUF_SIZE];
 
 ADC_HandleTypeDef hadc1;
-ADC_HandleTypeDef hadc2;
 DMA_HandleTypeDef hdma_adc1;
 DMA_HandleTypeDef hdma_adc2;
 
@@ -97,9 +96,6 @@ void
 HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
     if (HAL_ADC_Stop_DMA(&hadc1)!=HAL_OK)
-    Error_Handler();
-    
-    if (HAL_ADC_Stop_DMA(&hadc2)!=HAL_OK)
     Error_Handler();
 
     rtsys.rt_callback();
@@ -227,60 +223,6 @@ Rf_hardware::MX_ADC1_Init(void)
 
 }
 
-void 
-Rf_hardware::MX_ADC2_Init(void)
-{
-
-  /* USER CODE BEGIN ADC2_Init 0 */
-
-  /* USER CODE END ADC2_Init 0 */
-
-  ADC_ChannelConfTypeDef sConfig = {0};
-
-  /* USER CODE BEGIN ADC2_Init 1 */
-
-  /* USER CODE END ADC2_Init 1 */
-
-  /** Common config
-  */
-  hadc2.Instance = ADC2;
-  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
-  hadc2.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc2.Init.GainCompensation = 0;
-  hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  hadc2.Init.LowPowerAutoWait = DISABLE;
-  hadc2.Init.ContinuousConvMode = DISABLE;
-  hadc2.Init.NbrOfConversion = 1;
-  hadc2.Init.DiscontinuousConvMode = DISABLE;
-  hadc2.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T2_CC2;
-  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
-  hadc2.Init.DMAContinuousRequests = DISABLE;
-  hadc2.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-  hadc2.Init.OversamplingMode = DISABLE;
-  if (HAL_ADC_Init(&hadc2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Regular Channel
-  */
-  sConfig.Channel = ADC_CHANNEL_11;
-  sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
-  sConfig.SingleDiff = ADC_SINGLE_ENDED;
-  sConfig.OffsetNumber = ADC_OFFSET_NONE;
-  sConfig.Offset = 0;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN ADC2_Init 2 */
-
-  /* USER CODE END ADC2_Init 2 */
-
-}
 
 /*** HW interface ***********************************************************/
 void
@@ -340,10 +282,10 @@ Rf_hardware::readStat()
 void
 Rf_hardware::begin()
 {
+
+    MX_DMA_Init();   
     MX_GPIO_Init();
-    MX_DMA_Init();
     MX_ADC1_Init();
-    MX_ADC2_Init();
     MX_TIM2_Init();
     beginDCDC();
 
@@ -352,18 +294,15 @@ Rf_hardware::begin()
         Error_Handler();
     }
 
-    if (HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED) != HAL_OK) {
-        Error_Handler();
+    test = HAL_ADC_Start_DMA(&hadc1, ADC_buffer, ADC_BUF_SIZE);
+    
+    /*
+    if (HAL_ADC_Start_DMA(&hadc1, ADC_buffer, ADC_BUF_SIZE) != HAL_OK) {
+        //Error_Handler();
     }
+*/
 
-    if (HAL_ADC_Start_DMA1(&hadc1, ADC_buffer, ADC_BUF_SIZE) != HAL_OK) {
-        Error_Handler();
-    }
 
-   if (HAL_ADC_Start_DMA2(&hadc2, ADC_buffer2, ADC_BUF_SIZE2) != HAL_OK) {
-        Error_Handler();
-    }
-  
     /* Start TIM2 and ADC */
 	if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
         Error_Handler();
@@ -385,16 +324,6 @@ void DMA1_Channel1_IRQHandler(void)
 /**
   * @brief This function handles DMA1 channel2 global interrupt.
   */
-void DMA1_Channel2_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
-
-  /* USER CODE END DMA1_Channel2_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_adc2);
-  /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel2_IRQn 1 */
-}
 
 float 
 Rf_hardware::read_adc_VDC()

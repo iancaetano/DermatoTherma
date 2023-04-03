@@ -7,6 +7,7 @@ class Rf_hardware {
 
         static const float GAIN_CONTROL_MIN;
         static const float GAIN_CONTROL_MAX;
+        HAL_StatusTypeDef test;
         
 
         
