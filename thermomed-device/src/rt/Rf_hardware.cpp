@@ -3,8 +3,6 @@
 #include "Handset.h"
 #include "main.h"
 
-#define ADC_BUFFER_SIZE 3
-
 #define DCDC_ADDR                   0x74
 #define DCDCREG_REF                 0x00
 #define DCDCREG_IOUT_LIMT           0x02
@@ -39,7 +37,7 @@ const float Rf_hardware::GAIN_CONTROL_MIN = 0x1F;
 const float Rf_hardware::GAIN_CONTROL_MAX = 0x9F;
 
 // Declare a buffer to store ADC data
-uint32_t adc_data[ADC_BUFFER_SIZE];
+uint32_t adc_values[2];
 
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
@@ -105,7 +103,8 @@ extern "C" {
 void 
 HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-
+    adc_values[0] = HAL_ADC_GetValue(hadc);
+    adc_values[1] = HAL_ADC_GetValue(hadc);
     rtsys.rt_callback();
 
 }
@@ -192,6 +191,8 @@ Rf_hardware::MX_ADC1_Init(void)
   hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
 
+  HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
 
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
@@ -201,8 +202,10 @@ Rf_hardware::MX_ADC1_Init(void)
   /* Configure ADC channel */
   sConfig.Channel = ADC_CHANNEL_3;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLE_5;
-  sConfig.Offset = 0;
+  sConfig.SamplingTime                        = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SingleDiff                          = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber                        = ADC_OFFSET_NONE;
+  sConfig.Offset                              = 0;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -211,6 +214,10 @@ Rf_hardware::MX_ADC1_Init(void)
   /* Configure ADC channel */
   sConfig.Channel = ADC_CHANNEL_4;
   sConfig.Rank = 2;
+  sConfig.SamplingTime                        = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SingleDiff                          = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber                        = ADC_OFFSET_NONE;
+  sConfig.Offset                              = 0;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -293,13 +300,15 @@ Rf_hardware::begin()
 
     /* Start TIM2 and ADC */
 
-    if (HAL_ADC_Start_DMA(&hadc1, adc_data, ADC_BUFFER_SIZE) != HAL_OK) {
-        Error_Handler();
-    }
-
     if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
         Error_Handler();
     }
+
+    if (HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
+        Error_Handler();
+    }
+
+
 
 
 }
@@ -322,24 +331,25 @@ void DMA1_Channel1_IRQHandler(void)
 float 
 Rf_hardware::read_adc_VDC()
 {
-    uint32_t adc_value = adc_data[0];
+    uint32_t adc_value = adc_values[0];
     return adc_value*30;
 }
 
 float 
 Rf_hardware::read_adc_IDC()
 {
-    uint32_t adc_value = adc_data[1];
+    uint32_t adc_value = adc_values[1];
     return adc_value/0.4;
 }
 
+/*
 float 
 Rf_hardware::read_adc_phi()
 {
     uint32_t adc_value = adc_data[0];
     return adc_value;
 }
-
+*/
 void 
 Rf_hardware::writeToWireOne(byte ADDR,byte REG, byte value)
 {
