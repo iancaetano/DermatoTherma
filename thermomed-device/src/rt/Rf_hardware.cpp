@@ -3,8 +3,7 @@
 #include "Handset.h"
 #include "main.h"
 
-#define ADC_BUF_SIZE                16
-#define ADC_BUF_SIZE2               2
+#define ADC_BUFFER_SIZE 3
 
 #define DCDC_ADDR                   0x74
 #define DCDCREG_REF                 0x00
@@ -39,12 +38,11 @@
 const float Rf_hardware::GAIN_CONTROL_MIN = 0x1F;
 const float Rf_hardware::GAIN_CONTROL_MAX = 0x9F;
 
-uint32_t ADC_buffer[ADC_BUF_SIZE];
-uint32_t ADC_buffer2[ADC_BUF_SIZE];
+// Declare a buffer to store ADC data
+uint32_t adc_data[ADC_BUFFER_SIZE];
 
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
-DMA_HandleTypeDef hdma_adc2;
 
 TIM_HandleTypeDef htim2;
 
@@ -57,19 +55,29 @@ Rf_hardware::Rf_hardware()
 void 
 Rf_hardware::MX_DMA_Init(void)
 {
-
-  /* DMA controller clock enable */
-  __HAL_RCC_DMAMUX1_CLK_ENABLE();
+  // Enable the DMA clock
   __HAL_RCC_DMA1_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA1_Channel1_IRQn interrupt configuration */
+  
+  // Configure the DMA peripheral
+  hdma_adc1.Instance = DMA1_Channel1;
+  hdma_adc1.Init.Request = DMA_REQUEST_ADC1;
+  hdma_adc1.Init.Direction = DMA_PERIPH_TO_MEMORY;
+  hdma_adc1.Init.PeriphInc = DMA_PINC_DISABLE;
+  hdma_adc1.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_adc1.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+  hdma_adc1.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+  hdma_adc1.Init.Mode = DMA_CIRCULAR;
+  hdma_adc1.Init.Priority = DMA_PRIORITY_HIGH;
+  
+  // Initialize the DMA
+  HAL_DMA_Init(&hdma_adc1);
+  
+  // Associate the DMA handle with the ADC handle
+  __HAL_LINKDMA(&hadc1, DMA_Handle, hdma_adc1);
+  
+  // Enable DMA interrupts
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-  /* DMA1_Channel2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
-
 }
 
 void
@@ -90,15 +98,17 @@ Rf_hardware::MX_GPIO_Init(void)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(RF_ENABLE_GPIO_Port, &GPIO_InitStruct);
 
-}
 
+
+}
+extern "C" {
 void 
 HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-    if (HAL_ADC_Stop_DMA(&hadc1)!=HAL_OK)
-    Error_Handler();
 
     rtsys.rt_callback();
+
+}
 
 }
 
@@ -106,10 +116,10 @@ void
 Rf_hardware::beginDCDC()
 {
     writeToWireOne(DCDC_ADDR,DCDCREG_VOUT_SR,0x03);
-    writeToWireOne(DCDC_ADDR,DCDCREG_VOUT_FS,0x03);
-    writeToWireOne(DCDC_ADDR,DCDCREG_CDC,0x03);
-    writeToWireOne(DCDC_ADDR,DCDCREG_MODE,0x03);
-    writeToWireOne(DCDC_ADDR,DCDCREG_CDC,0x03);
+    writeToWireOne(DCDC_ADDR,DCDCREG_VOUT_FS,0x83);
+    writeToWireOne(DCDC_ADDR,DCDCREG_CDC,0xA0);
+    writeToWireOne(DCDC_ADDR,DCDCREG_MODE,0xA8);
+    writeToWireOne(DCDC_ADDR,DCDCREG_CDC,0xE0);
 
 
 }
@@ -162,65 +172,49 @@ Rf_hardware::MX_TIM2_Init(void)
 void 
 Rf_hardware::MX_ADC1_Init(void)
 {
-
-  /* USER CODE BEGIN ADC1_Init 0 */
-
-  /* USER CODE END ADC1_Init 0 */
-
-  ADC_MultiModeTypeDef multimode = {0};
   ADC_ChannelConfTypeDef sConfig = {0};
 
-  /* USER CODE BEGIN ADC1_Init 1 */
 
-  /* USER CODE END ADC1_Init 1 */
+  /* Enable ADC clock */
+  __HAL_RCC_ADC12_CLK_ENABLE();
 
-  /** Common config
-  */
+  /* Configure ADC */
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.GainCompensation = 0;
-  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  hadc1.Init.LowPowerAutoWait = DISABLE;
+  hadc1.Init.ScanConvMode = ENABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T2_CC2;
+  hadc1.Init.DiscontinuousConvMode = ENABLE;
+  hadc1.Init.NbrOfDiscConversion = 2;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-  hadc1.Init.OversamplingMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T2_TRGO;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+
+
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
   }
 
-  /** Configure the ADC multi-mode
-  */
-  multimode.Mode = ADC_MODE_INDEPENDENT;
-  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Regular Channel
-  */
+  /* Configure ADC channel */
   sConfig.Channel = ADC_CHANNEL_3;
-  sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
-  sConfig.SingleDiff = ADC_SINGLE_ENDED;
-  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLE_5;
   sConfig.Offset = 0;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN ADC1_Init 2 */
 
-  /* USER CODE END ADC1_Init 2 */
-
+  /* Configure ADC channel */
+  sConfig.Channel = ADC_CHANNEL_4;
+  sConfig.Rank = 2;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
 
@@ -283,9 +277,10 @@ void
 Rf_hardware::begin()
 {
 
-    MX_DMA_Init();   
+   
     MX_GPIO_Init();
     MX_ADC1_Init();
+    MX_DMA_Init();
     MX_TIM2_Init();
     beginDCDC();
 
@@ -294,19 +289,18 @@ Rf_hardware::begin()
         Error_Handler();
     }
 
-    test = HAL_ADC_Start_DMA(&hadc1, ADC_buffer, ADC_BUF_SIZE);
     
-    /*
-    if (HAL_ADC_Start_DMA(&hadc1, ADC_buffer, ADC_BUF_SIZE) != HAL_OK) {
-        //Error_Handler();
-    }
-*/
-
 
     /* Start TIM2 and ADC */
-	if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
+
+    if (HAL_ADC_Start_DMA(&hadc1, adc_data, ADC_BUFFER_SIZE) != HAL_OK) {
         Error_Handler();
     }
+
+    if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
+        Error_Handler();
+    }
+
 
 }
 
@@ -328,21 +322,21 @@ void DMA1_Channel1_IRQHandler(void)
 float 
 Rf_hardware::read_adc_VDC()
 {
-    uint32_t adc_value = ADC_buffer[0];
+    uint32_t adc_value = adc_data[0];
     return adc_value*30;
 }
 
 float 
 Rf_hardware::read_adc_IDC()
 {
-    uint32_t adc_value = ADC_buffer[1];
+    uint32_t adc_value = adc_data[1];
     return adc_value/0.4;
 }
 
 float 
 Rf_hardware::read_adc_phi()
 {
-    uint32_t adc_value = ADC_buffer2[0];
+    uint32_t adc_value = adc_data[0];
     return adc_value;
 }
 
