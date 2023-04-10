@@ -7,8 +7,7 @@
 #include "PushButton.h"
 #include "MLX90614.h"
 
-#define SCL_wireone                 PA9
-#define SDA_wireone                 PA8
+
 
 
 double avg_val_obj[numReadings]; // array for object avg calculation
@@ -35,9 +34,7 @@ HandsetClass::HandsetClass(){
 
 void HandsetClass::init(){
     
-    wireOne.setSDA(SDA_wireone);
-    wireOne.setSCL(SCL_wireone);
-    wireOne.begin();
+
 
     TempSensor.begin(MLX90614_I2CADDR, &wireOne);
 
@@ -126,33 +123,6 @@ void HandsetClass::handle(){
 }
 
 
-void 
-HandsetClass::writeToWireOne(byte ADDR,byte REG, byte value)
-{
-    wireOne.beginTransmission(ADDR);
-    wireOne.write(REG);
-    wireOne.write(value);
-    wireOne.endTransmission();
-}
         
-void 
-HandsetClass::writeDCDCOutToWireOne(byte ADDR,byte REG, byte value)
-{
-    wireOne.beginTransmission(ADDR);
-    wireOne.write(REG);
-    wireOne.write(value);
-    wireOne.write(0x00);
-    wireOne.endTransmission();
-}
-        
-byte
-HandsetClass::readfromWireOne(byte ADDR,byte REG)
-{
-    wireOne.beginTransmission(ADDR);    
-    wireOne.write(REG);                    
-    wireOne.requestFrom(ADDR,1);        
-    byte slaveByte1 = wireOne.read();         
-    wireOne.endTransmission();
 
-    return slaveByte1; 
-}
+        

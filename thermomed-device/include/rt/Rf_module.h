@@ -6,13 +6,15 @@
 #include "rt/Rf_hardware.h"
 #include "rt/Countdown_timer.h"
 
+
 class Rf_module {
   public:
     enum class State {undef, off, enabling, running, tripped};
     enum class Trip_cause {undef, opamp_protection, overcurrent_measured,
                            rl_estimate_too_low, rl_estimate_too_high, short_circuit,
-                           overcurrent, overvoltage};
-
+                           overcurrent, overvoltage};    
+                           
+    Rf_hardware hw;
     Rf_module();
 
     void update(); // call periodically to update the state
@@ -72,7 +74,7 @@ class Rf_module {
     float G_dac_to_pri = 102.81; // gain:  DAC voltage -> primary voltage [V_RMS/V]
     byte statRegDCDC;
 
-    Rf_hardware hw;
+
     State state;
     Trip_cause trip_cause;
     Rf_enabling_step rf_enabling_step;

@@ -3,6 +3,7 @@
 // framework-arduinoststm32/variants/STM32G4xx/G473R(B-C-E)T_G474R(B-C-E)T_G483RET_G484RET
 #include <Arduino.h>
 #include <SPI.h>
+#include <Wire.h>
 
 #include "Settings.h"
 #include "Console.h"
@@ -17,6 +18,12 @@
 #include "MLX90614.h"
 #include "Handset.h"
 
+
+#define DCDC_ADDR                   0x74
+
+#define SCL_wireone                 PA9
+#define SDA_wireone                 PA8
+
 /* OLED Driver */
 U8G2_SSD1322_NHD_128X64_CUSTOM u8g2(U8G2_R0, /* cs=*/ PC15, /* dc=*/ PB0, /* reset=*/ PB1);
 
@@ -28,7 +35,14 @@ SoftwareTimer       swTimer;
 
 Rt_system           rtsys;
 MLX90614            TempSensor;
+Rf_hardware         DCDC;
 HandsetClass        Handset;
+TPS                 DCDC_TPS;
+
+TwoWire wireOne = TwoWire();
+
+
+
 
 
 
@@ -41,8 +55,10 @@ const static int    baudRate = 2000000;
  */
 void
 setup() {
+
+
     Serial.begin(baudRate);
-    Serial3.begin(baudRate);
+    //Serial3.begin(baudRate);
 
     Serial.println("setup start");
 
@@ -51,6 +67,11 @@ setup() {
     
     Wire.begin();
     Serial.println("wire done");
+
+    wireOne.setSDA(SDA_wireone);
+    wireOne.setSCL(SCL_wireone);
+    wireOne.begin();
+    Serial.println("wireOne done");
     
     bq25792.begin();
     Serial.println("battery done");
@@ -80,6 +101,7 @@ setup() {
     HAL_RCC_MCOConfig(RCC_MCO1,RCC_MCO1SOURCE_PLLCLK,RCC_MCODIV_2);
 
 */
+    DCDC_TPS.begin(DCDC_ADDR, &wireOne);
     rtsys.init();
     rtsys.set_temp_sp(settings.temperatureSetpoint);
     Serial.println("rtsys done");
@@ -107,9 +129,12 @@ setup() {
 void
 loop()
 {
-    
     struct Rt_system::Rt_out out;
     rtsys.get_status(out);
+    if (rtsys.dcdcStartFlag){
+        DCDC_TPS.beginDCDC();
+        DCDC_TPS.set_DCDC_output_hw(0);
+    }
     settings.power = out.power_estimate;
     console.loop();
     bq25792.loop();

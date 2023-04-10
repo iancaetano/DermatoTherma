@@ -1,6 +1,7 @@
 
 #include "rt/Rf_module.h"
 
+
 static constexpr float limit(float x, float lol, float hil)
 {
   return x<lol ? lol : (x>hil ? hil : x);
@@ -43,8 +44,9 @@ void Rf_module::enable()
     state = State::enabling;
     // transition into first step of enabling sequence 
     rf_enabling_step = Rf_enabling_step::s1_stabilize_readings;
-    set_DCDC_output(0);
     pke_enable();
+    
+
     seq_timer.restart_with_new_time(Delay::pke_start);
   }
 }
@@ -64,7 +66,7 @@ void Rf_module::set_DCDC_output(byte v)
 {
   //if(state == State::running) {
     byte v_sat = limit(v, U_min, U_max);
-    hw.set_DCDC_output_hw(v_sat);
+    //DCDC_TPS.set_DCDC_output_hw(v_sat);
   //}
 }
 
@@ -195,7 +197,7 @@ void Rf_module::assure_safe_operating_point()
 byte 
 Rf_module::readStatReg()
 {
-  return hw.readStat();
+  return 1;//DCDC_TPS.readStat();
 }
 
 

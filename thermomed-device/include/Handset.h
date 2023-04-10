@@ -12,8 +12,6 @@ class HandsetClass : public SoftwareTimerHandler{
     public:
     
 
-        TwoWire wireOne = TwoWire();
-
         HandsetClass();
         
         void init();
@@ -30,9 +28,7 @@ class HandsetClass : public SoftwareTimerHandler{
 
         StartButton startButton;
 
-        void writeToWireOne(byte ADDR,byte REG, byte value);
-        void writeDCDCOutToWireOne(byte ADDR,byte REG, byte value);
-        byte readfromWireOne(byte ADDR,byte REG);
+
     
     private:
 

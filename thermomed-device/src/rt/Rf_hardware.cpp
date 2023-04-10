@@ -3,7 +3,8 @@
 #include "Handset.h"
 #include "main.h"
 
-#define DCDC_ADDR                   0x74
+
+
 #define DCDCREG_REF                 0x00
 #define DCDCREG_IOUT_LIMT           0x02
 #define DCDCREG_VOUT_SR             0x03
@@ -33,8 +34,8 @@
 #define ADC_12BIT                   4096.0f
 #define ADC_VCC                     3.3f
 
-const float Rf_hardware::GAIN_CONTROL_MIN = 0x1F;
-const float Rf_hardware::GAIN_CONTROL_MAX = 0x9F;
+const float TPS::GAIN_CONTROL_MIN = 0x1F;
+const float TPS::GAIN_CONTROL_MAX = 0x9F;
 
 // Declare a buffer to store ADC data
 uint32_t adc_values[2];
@@ -50,33 +51,6 @@ Rf_hardware::Rf_hardware()
     //
 }
 
-void 
-Rf_hardware::MX_DMA_Init(void)
-{
-  // Enable the DMA clock
-  __HAL_RCC_DMA1_CLK_ENABLE();
-  
-  // Configure the DMA peripheral
-  hdma_adc1.Instance = DMA1_Channel1;
-  hdma_adc1.Init.Request = DMA_REQUEST_ADC1;
-  hdma_adc1.Init.Direction = DMA_PERIPH_TO_MEMORY;
-  hdma_adc1.Init.PeriphInc = DMA_PINC_DISABLE;
-  hdma_adc1.Init.MemInc = DMA_MINC_ENABLE;
-  hdma_adc1.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
-  hdma_adc1.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
-  hdma_adc1.Init.Mode = DMA_CIRCULAR;
-  hdma_adc1.Init.Priority = DMA_PRIORITY_HIGH;
-  
-  // Initialize the DMA
-  HAL_DMA_Init(&hdma_adc1);
-  
-  // Associate the DMA handle with the ADC handle
-  __HAL_LINKDMA(&hadc1, DMA_Handle, hdma_adc1);
-  
-  // Enable DMA interrupts
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-}
 
 void
 Rf_hardware::MX_GPIO_Init(void)
@@ -91,6 +65,7 @@ Rf_hardware::MX_GPIO_Init(void)
     HAL_GPIO_WritePin(GPIOC, RF_ENABLE_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pins : RF_ENABLE_Pin */
+    GPIO_InitStruct.Pin = RF_ENABLE_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -111,17 +86,33 @@ HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 }
 
-void
-Rf_hardware::beginDCDC()
-{
-    writeToWireOne(DCDC_ADDR,DCDCREG_VOUT_SR,0x03);
-    writeToWireOne(DCDC_ADDR,DCDCREG_VOUT_FS,0x83);
-    writeToWireOne(DCDC_ADDR,DCDCREG_CDC,0xA0);
-    writeToWireOne(DCDC_ADDR,DCDCREG_MODE,0xA8);
-    writeToWireOne(DCDC_ADDR,DCDCREG_CDC,0xE0);
 
+bool
+TPS::begin(uint8_t addr, TwoWire *wire)
+{
+  DCDC_i2c_dev = new Adafruit_I2CDevice(addr, wire);
+  return DCDC_i2c_dev->begin();
+}
+
+void
+TPS::beginDCDC(){
+
+
+  delay(10);
+  DCDC_TPS.write8(DCDCREG_VOUT_SR,0x03);
+  delay(10);
+  DCDC_TPS.write8(DCDCREG_VOUT_FS,0x83);
+  delay(10);
+  DCDC_TPS.write8(DCDCREG_CDC,0xA0);
+  delay(10);
+  DCDC_TPS.write8(DCDCREG_MODE,0xA8);
+  delay(10);
+  DCDC_TPS.write8(DCDCREG_CDC,0xE0);
+  delay(10);
 
 }
+
+
 
 
 void 
@@ -172,10 +163,11 @@ void
 Rf_hardware::MX_ADC1_Init(void)
 {
   ADC_ChannelConfTypeDef sConfig = {0};
-
+  GPIO_InitTypeDef        GPIO_InitStruct     = {0};
 
   /* Enable ADC clock */
   __HAL_RCC_ADC12_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /* Configure ADC */
   hadc1.Instance = ADC1;
@@ -190,6 +182,13 @@ Rf_hardware::MX_ADC1_Init(void)
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+
+
+  /** ADC1 GPIO Configuration  */
+  GPIO_InitStruct.Pin                         = RF_ADC_FEEDBACK_VDC |RF_ADC_FEEDBACK_CURRENT;
+  GPIO_InitStruct.Mode                        = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull                        = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
@@ -230,7 +229,7 @@ void
 Rf_hardware::pke_enable()
 {
     HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_SET);
-    beginDCDC();
+    
 }
 
 void
@@ -238,7 +237,7 @@ Rf_hardware::pke_disable()
 {
     //writeDCDCOutToWireOne(DCDC_ADDR,DCDCREG_REF,0x00);
 
-    HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_RESET);
     
 }
 
@@ -259,7 +258,7 @@ Rf_hardware::pke_disable()
  */
 
 void
-Rf_hardware::set_DCDC_output_hw(byte v)
+TPS::set_DCDC_output_hw(byte v)
 {
     if (v < GAIN_CONTROL_MIN) {
         v = GAIN_CONTROL_MIN;
@@ -267,15 +266,15 @@ Rf_hardware::set_DCDC_output_hw(byte v)
         v = GAIN_CONTROL_MAX;
     }
 
-    writeDCDCOutToWireOne(DCDC_ADDR,DCDCREG_REF,v);
+    DCDC_TPS.write16(DCDCREG_REF,v);
 }
 
 
 byte
-Rf_hardware::readStat()
+TPS::readStat()
 {
 
-    return Handset.readfromWireOne(DCDC_ADDR,DCDCREG_STATUS);
+    return DCDC_TPS.read8(DCDCREG_STATUS);
 
 }
 
@@ -284,12 +283,10 @@ void
 Rf_hardware::begin()
 {
 
-   
-    MX_GPIO_Init();
     MX_ADC1_Init();
-    MX_DMA_Init();
     MX_TIM2_Init();
-    beginDCDC();
+    MX_GPIO_Init();
+
 
     /* Calibrate w/o start */
     if (HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK) {
@@ -350,24 +347,59 @@ Rf_hardware::read_adc_phi()
     return adc_value;
 }
 */
-void 
-Rf_hardware::writeToWireOne(byte ADDR,byte REG, byte value)
-{
-    Handset.writeToWireOne(ADDR,REG,value);
-}
-        
-void 
-Rf_hardware::writeDCDCOutToWireOne(byte ADDR,byte REG, byte value)
-{
-    Handset.writeDCDCOutToWireOne(ADDR,REG,value);
 
-}
-        
-byte
-Rf_hardware::readfromWireOne(byte ADDR,byte REG)
+uint8_t
+TPS::read8(uint8_t a)
 {
-     return Handset.readfromWireOne(ADDR,REG);
+  uint8_t buffer[2];
+  buffer[0] = a;
+  // read two bytes of data + pec
+  bool status = DCDC_i2c_dev->write_then_read(buffer, 1, buffer, 3);
+  if (!status)
+    return 0;
+  // return data, ignore pec
+  return uint8_t(buffer[0]);
 }
+
+uint16_t 
+TPS::read16(uint8_t a)
+{
+  uint8_t buffer[3];
+  buffer[0] = a;
+  // read two bytes of data + pec
+  bool status = DCDC_i2c_dev->write_then_read(buffer, 1, buffer, 3);
+  if (!status)
+    return 0;
+  // return data, ignore pec
+  return uint16_t(buffer[0]) | (uint16_t(buffer[1]) << 8);
+}
+
+
+void 
+TPS::write8(uint8_t a, uint8_t v)
+{
+  uint8_t buffer[2];
+
+  buffer[0] = a;
+  buffer[1] = v & 0xff;
+
+
+   DCDC_i2c_dev->write(buffer, 2);
+}
+
+
+void 
+TPS::write16(uint8_t a, uint8_t v)
+{
+  uint8_t buffer[3];
+
+  buffer[0] = a;
+  buffer[1] = v & 0xff;
+  buffer[2] = 0x00;
+
+  DCDC_i2c_dev->write(buffer, 3);
+}
+
 
 /*** IRQ Handler ************************************************************/
 extern "C" void

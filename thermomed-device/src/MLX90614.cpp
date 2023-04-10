@@ -13,8 +13,6 @@ MLX90614::MLX90614() {
  */
 bool MLX90614::begin(uint8_t addr, TwoWire *wire) {
   _addr = addr; // needed for CRC
-  if (i2c_dev)
-    delete i2c_dev;
   i2c_dev = new Adafruit_I2CDevice(addr, wire);
   return i2c_dev->begin();
 }

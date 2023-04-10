@@ -111,6 +111,7 @@ void Rt_system::rt_callback()
     switch(rt_status) {
       case Rt_status::off:
         if(iv.start_treatment) {
+          dcdcStartFlag =1;
           rfmod.enable();
           ctrl.restart();
           rt_status = Rt_status::treating;

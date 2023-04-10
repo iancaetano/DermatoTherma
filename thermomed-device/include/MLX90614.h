@@ -29,9 +29,10 @@
  *
  */
 class MLX90614 {
+
   public:
-    MLX90614();
     bool begin(uint8_t addr = MLX90614_I2CADDR, TwoWire *wire = &Wire);
+    MLX90614();
 
     double readObjectTempC(void);
     double readAmbientTempC(void);
