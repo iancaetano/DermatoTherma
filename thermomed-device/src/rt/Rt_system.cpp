@@ -89,7 +89,6 @@ void Rt_system::get_status(struct Rt_system::Rt_out &s) // output
 void Rt_system::rt_callback()
 {
   bool new_ml_vals;
-  byte DCDC_out;
   Safety_supervisor::Assessment_result res;
   bool hardware_err;
   bool safety_err;
@@ -126,7 +125,7 @@ void Rt_system::rt_callback()
         if(start_time.is_expired() && check_for_change) {
           dtemp = iv.temp_pv-temp_last;
           if (dtemp < delta_temp_min) {
-            abort = false;//true;
+            abort = false;
           } else {
             this->temp_last = iv.temp_pv;
             start_time.restart();
@@ -134,6 +133,7 @@ void Rt_system::rt_callback()
         }
         
         if(hardware_err || safety_err || abort) {
+          running = 0;
           ctrl.stop();
           rfmod.power_off();
           rt_status = Rt_status::error;
@@ -144,8 +144,8 @@ void Rt_system::rt_callback()
         } else {
           Rf_module::State rfmodstate = rfmod.get_state();
           if(rfmodstate == Rf_module::State::running) {
-            DCDC_out = ctrl.update(iv.temp_sp, iv.temp_pv); 
-            rfmod.set_DCDC_output(convertToHex(DCDC_out));
+            running = 1;
+            DCDC_out = convertToHex(ctrl.update(iv.temp_sp, iv.temp_pv)); 
           }
         }
         break;

@@ -131,10 +131,25 @@ loop()
 {
     struct Rt_system::Rt_out out;
     rtsys.get_status(out);
-    if (rtsys.dcdcStartFlag){
+
+
+    if(rtsys.dcdcStartFlag){
         DCDC_TPS.beginDCDC();
         DCDC_TPS.set_DCDC_output_hw(0);
+        rtsys.dcdcStartFlag = 0;
     }
+    if(){
+
+    }
+    if(){
+
+    }
+    if(){
+        
+    }
+
+
+
     settings.power = out.power_estimate;
     console.loop();
     bq25792.loop();

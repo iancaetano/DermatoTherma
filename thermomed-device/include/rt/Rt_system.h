@@ -11,9 +11,15 @@ extern uint32_t start_delay_ms;
 class Rt_system {
   public:
     bool dcdcStartFlag;
+    bool running;
+    byte DCDC_out;
+
+    enum class Rt_status {undef, off, treating, error};
+    
+    Rt_status rt_status;
     Rt_system();
     // state indicator for main loop
-    enum class Rt_status {undef, off, treating, error}; 
+ 
     // use this struct only for communication with main loop
     struct Rt_out {
         Rt_status rt_status;
@@ -65,7 +71,7 @@ class Rt_system {
 
     // state of RT subsystem, internally relavant,
     // but also indicator for main loop
-    Rt_status rt_status;
+
 
     /*** input from main loop ***/
     // use this struct only for communication with main loop

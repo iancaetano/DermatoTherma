@@ -946,6 +946,9 @@ BQ25792::begin()
     SFET_PRESENT(0x01);
     SDRV_DLY(0x01);
     WKUP_DLY(0x01);
+    byte data[2];
+    getRegister(FAULT_Status,2,data);
+    delay(10);
 }
 
 /*****************************************************************************/

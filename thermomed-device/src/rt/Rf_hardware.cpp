@@ -237,7 +237,7 @@ Rf_hardware::pke_disable()
 {
     //writeDCDCOutToWireOne(DCDC_ADDR,DCDCREG_REF,0x00);
 
-    //HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_RESET);
     
 }
 
