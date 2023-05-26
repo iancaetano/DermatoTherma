@@ -79,8 +79,11 @@ Rf_hardware::beginADC1()
 {
 
     ADC_MultiModeTypeDef    multimode           = {0};
-    ADC_ChannelConfTypeDef  sConfig             = {0};
     GPIO_InitTypeDef        GPIO_InitStruct     = {0};
+
+    ADC_ChannelConfTypeDef sConfig1;
+    ADC_ChannelConfTypeDef sConfig2;
+    ADC_ChannelConfTypeDef sConfig3;
 
     /** Common config */
     hadc1.Instance                              = ADC1;
@@ -136,16 +139,43 @@ Rf_hardware::beginADC1()
         Error_Handler();
     }
 
-    /** Configure Regular Channel */
-    sConfig.Channel                             = ADC_CHANNEL_4;
-    sConfig.Rank                                = ADC_REGULAR_RANK_1;
-    sConfig.SamplingTime                        = ADC_SAMPLETIME_2CYCLES_5;
-    sConfig.SingleDiff                          = ADC_SINGLE_ENDED;
-    sConfig.OffsetNumber                        = ADC_OFFSET_NONE;
-    sConfig.Offset                              = 0;
-    if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-        Error_Handler();
-    }
+/** Configure Channel
+  */
+  sConfig1.Channel = ADC_CHANNEL_3;
+  sConfig1.Rank = ADC_REGULAR_RANK_1;
+  sConfig1.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig1.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig1.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig1.Offset = 0;
+
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  sConfig2.Channel = ADC_CHANNEL_3;
+  sConfig2.Rank = ADC_REGULAR_RANK_2;
+  sConfig2.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig2.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig2.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig2.Offset = 0;
+
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  sConfig3.Channel = ADC_CHANNEL_3;
+  sConfig3.Rank = ADC_REGULAR_RANK_3;
+  sConfig3.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig3.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig3.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig3.Offset = 0;
+
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig3) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
 void
@@ -278,6 +308,29 @@ float
 Rf_hardware::read_adc_voltage()
 {
     return ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT;
+}
+
+Rf_hardware::read_adc_VDC()
+{
+    uint32_t adc_value = ADC_buffer[0];
+    uint32_t adc_value = adc_data[0];
+    return adc_value*30;
+}
+
+float 
+Rf_hardware::read_adc_IDC()
+{
+    uint32_t adc_value = ADC_buffer[1];
+    uint32_t adc_value = adc_data[1];
+    return adc_value/0.4;
+}
+
+float 
+Rf_hardware::read_adc_phi()
+{
+    uint32_t adc_value = ADC_buffer2[0];
+    uint32_t adc_value = adc_data[0];
+    return adc_value;
 }
 
 /**
