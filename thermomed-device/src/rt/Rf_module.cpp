@@ -42,7 +42,6 @@ void Rf_module::enable()
     trip_cause = Trip_cause::undef;
     state = State::enabling;
     // transition into first first step of enabling sequence 
-    rf_enabling_step = Rf_enabling_step::s1_power_up;
     set_primary_voltage_rms(0);
     pke_enable();
     seq_timer.restart_with_new_time(Delay::pke_start);
@@ -53,7 +52,6 @@ void Rf_module::enable()
 void Rf_module::power_off()
 {
   set_dac_voltage(0);
-  set_opamp_on_input_float();
   pke_disable();
   module_reenable_lockout_timer.restart();
   state = State::off;
@@ -66,7 +64,7 @@ void Rf_module::set_primary_voltage_rms(float v)
   //if(state == State::running) {
     float v_sat = limit(v, U_min, U_max);
     float adc_voltage = v_sat/(G_dac_to_pri*V_vga);
-    set_dac_voltage(adc_voltage);
+    set_dac_voltage(v);
   //}
 }
 
@@ -125,43 +123,9 @@ void Rf_module::state_enabling()
 {
   // use safe default values
   uint32_t duration = 0;
-  Rf_enabling_step next_step = Rf_enabling_step::s0_undef;
-
-    // delay next transition until the current state's wait time is over
-    if (seq_timer.is_expired()) {
-      
-      // switch cases define transition actions to next step & its duration
-      switch (rf_enabling_step) {
-        case Rf_enabling_step::s0_undef:
-          break;
-        case Rf_enabling_step::s1_power_up:
-            next_step = Rf_enabling_step::s2_opamp_enable;
-            set_opamp_on_input_pull_low();// activate opamp
-            duration = Delay::opamp_enable;
-          break;
-        case Rf_enabling_step::s2_opamp_enable:
-            next_step = Rf_enabling_step::s3_enable_current_limit;
-            set_opamp_on_input_float();
-            duration = Delay::current_limit_enable;
-          break;
-        case Rf_enabling_step::s3_enable_current_limit:
-            next_step = Rf_enabling_step::s4_stabilize_readings;
-            set_primary_voltage_rms(U_min);
-            duration = Delay::stabilize_readings;
-          break;
-        case Rf_enabling_step::s4_stabilize_readings:
-            next_step = Rf_enabling_step::s5_running;
-            update_readings();
-            state = State::running;
-          break;
-        case Rf_enabling_step::s5_running:
-            // we should not arrive here
-          break;
-      }
-      rf_enabling_step = next_step;
-      seq_timer.restart_with_new_time(duration);
-    }
+  seq_timer.restart_with_new_time(duration);
 }
+
 
 // updates current measurement and estimates for other quantities
 //TODO: add fiter for estimates
@@ -210,20 +174,7 @@ void Rf_module::pke_disable()
   hw.pke_disable();
   dio.pke_enable = false;
 }
-// Floats AD4870 ON_ pin -> if the AD4870 is already on, it activates
-// the 1A current limit. Use this as default state at power up.
-void Rf_module::set_opamp_on_input_float()
-{
-  hw.set_opamp_on_input_float();
-  dio.opamp_on_input_float = true;
-}
-// Takes AD4870 ON_ to LOW -> if the its output was off it switches now on,
-// but without current limit.
-void Rf_module::set_opamp_on_input_pull_low()
-{
-  hw.set_opamp_on_input_pull_low();
-  dio.opamp_on_input_float = false;
-}
+
 
 
 void Rf_module::set_debug_pin_state(bool state)

@@ -8,8 +8,8 @@
 #define ADC_VAC2_Pin                GPIO_PIN_3
 #define ADC_VAC2_GPIO_Port          GPIOC
 
-#define RF_ADC_FEEDBACK_Pin         GPIO_PIN_3
-#define RF_ADC_FEEDBACK_GPIO_Port   GPIOA
+#define RF_ADC_VDC_Pin              GPIO_PIN_3
+#define RF_ADC_VDC_GPIO_Port        GPIOA
 
 #define RF_DAC_CONTROL_Pin          GPIO_PIN_4
 #define RF_DAC_CONTROL_GPIO_Port    GPIOA
@@ -17,10 +17,8 @@
 #define RF_ENABLE_Pin               GPIO_PIN_4
 #define RF_ENABLE_GPIO_Port         GPIOC
 
-#define RF_OPAMP_ENABLE_Pin         GPIO_PIN_5
-#define RF_OPAMP_ENABLE_GPIO_Port   GPIOC
 
-#define RF_DEBUG_Pin                GPIO_PIN_2
+#define RF_DEBUG_Pin               GPIO_PIN_2
 #define RF_DEBUG_GPIO_Port         GPIOA
 
 #define ADC_12BIT                   4096.0f
@@ -116,10 +114,10 @@ Rf_hardware::beginADC1()
     GPIO_InitStruct.Pull                        = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin                         = RF_ADC_FEEDBACK_Pin;
+    GPIO_InitStruct.Pin                         = RF_ADC_VDC_Pin;
     GPIO_InitStruct.Mode                        = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull                        = GPIO_NOPULL;
-    HAL_GPIO_Init(RF_ADC_FEEDBACK_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(RF_ADC_VDC_GPIO_Port, &GPIO_InitStruct);
 
     /* ADC1 interrupt Init */
     HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
@@ -200,12 +198,11 @@ Rf_hardware::beginGpio()
     __HAL_RCC_GPIOC_CLK_ENABLE();
 
     /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOC, RF_OPAMP_ENABLE_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOC, RF_ENABLE_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOC, RF_ENABLE_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_DEBUG_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pins : RF_ENABLE_Pin */
-    GPIO_InitStruct.Pin = RF_ENABLE_Pin | RF_OPAMP_ENABLE_Pin;
+    GPIO_InitStruct.Pin = RF_ENABLE_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -253,25 +250,13 @@ Rf_hardware::begin()
 void
 Rf_hardware::pke_enable()
 {
-    HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_SET);
 }
 
 void
 Rf_hardware::pke_disable()
 {
-    HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_SET);
-}
-
-void
-Rf_hardware::set_opamp_on_input_float()
-{
-    HAL_GPIO_WritePin(RF_OPAMP_ENABLE_GPIO_Port, RF_OPAMP_ENABLE_Pin, GPIO_PIN_RESET);
-}
-
-void
-Rf_hardware::set_opamp_on_input_pull_low()
-{
-    HAL_GPIO_WritePin(RF_OPAMP_ENABLE_GPIO_Port, RF_OPAMP_ENABLE_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_RESET);
 }
 
 void
@@ -309,7 +294,7 @@ Rf_hardware::set_dac_voltage(float v)
         v = GAIN_CONTROL_MAX;
     }
 
-    uint32_t value = static_cast<uint32_t>(ADC_12BIT * v / ADC_VCC);
+    uint32_t value = static_cast<uint32_t>(ADC_12BIT * (1-v/ ADC_VCC));
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, value);
 }
 

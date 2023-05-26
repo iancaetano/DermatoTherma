@@ -11,6 +11,7 @@ extern uint32_t start_delay_ms;
 class Rt_system {
   public:
 
+    float dummy_Y;
     Rt_system();
     // state indicator for main loop
     enum class Rt_status {undef, off, treating, error}; 

@@ -101,12 +101,8 @@ class Rf_module {
     inline void pke_enable();
     // disables main supply for RF module
     inline void pke_disable();
-    // Floats AD4870 ON_ pin -> if the AD4870 is already on, it activates
-    // the 1A current limit. Use this as default state at power up.
-    inline void set_opamp_on_input_float();
-    // Takes AD4870 ON_ to LOW -> if the its output was off it switches now on,
-    // but without current limit.
-    inline void set_opamp_on_input_pull_low();
+
+
     // returns the raw voltage at the ADC input for the primary side RMS current
     inline float read_adc_voltage();
     // sets raw voltage DAC connected to the VGA -> controls RF amplitude

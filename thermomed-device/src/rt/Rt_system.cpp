@@ -138,6 +138,7 @@ void Rt_system::rt_callback()
           ctrl.stop();
           rfmod.power_off();
           rt_status = Rt_status::error;
+        
         } else if (iv.stop_treatment) {
           ctrl.stop();
           rfmod.power_off();
@@ -145,8 +146,10 @@ void Rt_system::rt_callback()
         } else {
           Rf_module::State rfmodstate = rfmod.get_state();
           if(rfmodstate == Rf_module::State::running) {
-            u_sat_cv = ctrl.update(iv.temp_sp, iv.temp_pv); 
-            rfmod.set_primary_voltage_rms(u_sat_cv); // Glaube hier können wir die einheitssprungantwort Messen. (u_sat_cv = 1)
+            u_sat_cv = ctrl.update(iv.temp_sp, iv.temp_pv);
+            dummy_Y = u_sat_cv;
+            rfmod.set_primary_voltage_rms(0); 
+            //rfmod.set_primary_voltage_rms(u_sat_cv);
           }
         }
         break;
