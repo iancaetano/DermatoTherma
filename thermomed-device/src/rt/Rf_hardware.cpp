@@ -2,6 +2,10 @@
 #include <Arduino.h>
 #include "rt/callbackFlag.h"
 
+
+#define DEBUG_Pin                   GPIO_PIN_10
+#define DEBUG_GPIO_Port             GPIOB
+
 #define ADC_VAC1_Pin                GPIO_PIN_2
 #define ADC_VAC1_GPIO_Port          GPIOC
 
@@ -24,13 +28,12 @@
 #define RF_ENABLE_GPIO_Port         GPIOC
 
 
-#define RF_DEBUG_Pin               GPIO_PIN_2
-#define RF_DEBUG_GPIO_Port         GPIOA
-
 #define ADC_12BIT                   4096.0f
 #define ADC_VCC                     3.3f
 
+
 uint32_t adc_values[3];
+uint32_t lastADCValue[3] = {0};
 
 const float Rf_hardware::GAIN_CONTROL_MIN = 0.0f;
 const float Rf_hardware::GAIN_CONTROL_MAX = 3.0f;
@@ -49,12 +52,18 @@ extern "C" {
 void
 HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
+    int i = 0;
+    HAL_GPIO_TogglePin(DEBUG_GPIO_Port, DEBUG_Pin);
+
     if (hadc==&hadc1){
+        float alpha = 0.9;
         for(int i=0;i<3;i++){
-    adc_values[i] = HAL_ADC_GetValue(&hadc1);
+            adc_values[i] = alpha*HAL_ADC_GetValue(&hadc1)+(1-alpha)*lastADCValue[i];
+            lastADCValue[i] = adc_values[i];
         }
     RTcallbackFlag = 1;
     }
+
 }
 
 };
@@ -69,7 +78,7 @@ Rf_hardware::beginTimer2()
     htim2.Instance                              = TIM2;
     htim2.Init.Prescaler                        = 1700;
     htim2.Init.CounterMode                      = TIM_COUNTERMODE_UP;
-    htim2.Init.Period                           = 200;
+    htim2.Init.Period                           = 2;
     htim2.Init.ClockDivision                    = TIM_CLOCKDIVISION_DIV1;
     htim2.Init.AutoReloadPreload                = TIM_AUTORELOAD_PRELOAD_DISABLE;
 
@@ -117,8 +126,8 @@ Rf_hardware::beginADC1()
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.NbrOfConversion = 3;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T2_TRGO;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
   hadc1.Init.DMAContinuousRequests = DISABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc1.Init.OversamplingMode = DISABLE;
@@ -250,7 +259,7 @@ Rf_hardware::beginGpio()
 
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOC, RF_ENABLE_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_DEBUG_Pin, GPIO_PIN_RESET);
+
 
     /*Configure GPIO pins : RF_ENABLE_Pin */
     GPIO_InitStruct.Pin = RF_ENABLE_Pin;
@@ -259,20 +268,21 @@ Rf_hardware::beginGpio()
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(RF_ENABLE_GPIO_Port, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : RF_DEBUG_Pin */
-    GPIO_InitStruct.Pin = RF_DEBUG_Pin;
+    GPIO_InitStruct.Pin = DEBUG_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = 0; // macroname?
-    HAL_GPIO_Init(RF_DEBUG_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(DEBUG_GPIO_Port, &GPIO_InitStruct);
+
 }
 
 void
 Rf_hardware::begin()
 {
-    beginTimer2();
+    
     beginADC1();
+    beginTimer2();
     beginDAC1();
     beginGpio();
 
@@ -310,15 +320,7 @@ Rf_hardware::pke_disable()
     HAL_GPIO_WritePin(RF_ENABLE_GPIO_Port, RF_ENABLE_Pin, GPIO_PIN_RESET);
 }
 
-void
-Rf_hardware::set_debug_pin_state(bool state)
-{
-    if (state) {
-        HAL_GPIO_WritePin(RF_DEBUG_GPIO_Port, RF_DEBUG_Pin, GPIO_PIN_SET);
-    } else {
-        HAL_GPIO_WritePin(RF_DEBUG_GPIO_Port, RF_DEBUG_Pin, GPIO_PIN_RESET);
-    }
-}
+
 
 /**
  * @brief Read ADC voltage, proportional to current

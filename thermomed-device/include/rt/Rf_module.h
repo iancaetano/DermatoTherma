@@ -33,8 +33,6 @@ class Rf_module {
 
     float get_max_primary_voltage_rms();
 
-    void set_debug_pin_state(bool state);
-
   private:
     enum class Rf_enabling_step {
       s0_undef,

@@ -182,10 +182,7 @@ void Rf_module::pke_disable()
 
 
 
-void Rf_module::set_debug_pin_state(bool state)
-{
-  hw.set_debug_pin_state(state);
-}
+
 
 // returns the raw voltage at the ADC input for the primary side RMS current
 float Rf_module::read_RFVDC_voltage()

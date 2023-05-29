@@ -15,7 +15,6 @@ class Rf_hardware {
         /* HW interface */
         void pke_enable();
         void pke_disable();
-        static void set_debug_pin_state(bool state);
         float read_RFVDC_voltage();
         void set_dac_voltage(float v);
         float read_adc_VDC();
@@ -27,7 +26,9 @@ class Rf_hardware {
         void beginADC1();
         void beginDAC1();
         void beginGpio();
-        void MX_DMA_Init();
+        void beginDMA();
+
+
 
     
 };
