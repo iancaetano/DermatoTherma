@@ -1,6 +1,6 @@
 #include "rt/Rf_hardware.h"
-
 #include <Arduino.h>
+#include "rt/callbackFlag.h"
 
 #define ADC_VAC1_Pin                GPIO_PIN_2
 #define ADC_VAC1_GPIO_Port          GPIOC
@@ -8,8 +8,14 @@
 #define ADC_VAC2_Pin                GPIO_PIN_3
 #define ADC_VAC2_GPIO_Port          GPIOC
 
+#define RF_ADC_PHI_Pin              GPIO_PIN_1
+#define RF_ADC_RFIN_GPIO_Port        GPIOA
+
+#define RF_ADC_I_Pin                GPIO_PIN_2
+#define RF_ADC_RFIN_GPIO_Port        GPIOA
+
 #define RF_ADC_VDC_Pin              GPIO_PIN_3
-#define RF_ADC_VDC_GPIO_Port        GPIOA
+#define RF_ADC_RFIN_GPIO_Port        GPIOA
 
 #define RF_DAC_CONTROL_Pin          GPIO_PIN_4
 #define RF_DAC_CONTROL_GPIO_Port    GPIOA
@@ -24,6 +30,8 @@
 #define ADC_12BIT                   4096.0f
 #define ADC_VCC                     3.3f
 
+uint32_t adc_values[3];
+
 const float Rf_hardware::GAIN_CONTROL_MIN = 0.0f;
 const float Rf_hardware::GAIN_CONTROL_MAX = 3.0f;
 
@@ -36,6 +44,20 @@ Rf_hardware::Rf_hardware()
     //
 }
 
+extern "C" {
+
+void
+HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+    if (hadc==&hadc1){
+        for(int i=0;i<3;i++){
+    adc_values[i] = HAL_ADC_GetValue(&hadc1);
+        }
+    RTcallbackFlag = 1;
+    }
+}
+
+};
 void
 Rf_hardware::beginTimer2()
 {
@@ -86,22 +108,21 @@ Rf_hardware::beginADC1()
     ADC_ChannelConfTypeDef sConfig3;
 
     /** Common config */
-    hadc1.Instance                              = ADC1;
-    hadc1.Init.ClockPrescaler                   = ADC_CLOCK_SYNC_PCLK_DIV4;
-    hadc1.Init.Resolution                       = ADC_RESOLUTION_12B;
-    hadc1.Init.DataAlign                        = ADC_DATAALIGN_RIGHT;
-    hadc1.Init.GainCompensation                 = 0;
-    hadc1.Init.ScanConvMode                     = ADC_SCAN_DISABLE;
-    hadc1.Init.EOCSelection                     = ADC_EOC_SINGLE_CONV;
-    hadc1.Init.LowPowerAutoWait                 = DISABLE;
-    hadc1.Init.ContinuousConvMode               = DISABLE;
-    hadc1.Init.NbrOfConversion                  = 1;
-    hadc1.Init.DiscontinuousConvMode            = DISABLE;
-    hadc1.Init.ExternalTrigConv                 = ADC_EXTERNALTRIG_T2_TRGO;
-    hadc1.Init.ExternalTrigConvEdge             = ADC_EXTERNALTRIGCONVEDGE_RISING;
-    hadc1.Init.DMAContinuousRequests            = DISABLE;
-    hadc1.Init.Overrun                          = ADC_OVR_DATA_PRESERVED;
-    hadc1.Init.OversamplingMode                 = DISABLE;
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+  hadc1.Init.LowPowerAutoWait = DISABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.NbrOfConversion = 3;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  hadc1.Init.OversamplingMode = DISABLE;
+
 
     /*** MspInit BEGIN ***/
 
@@ -117,10 +138,10 @@ Rf_hardware::beginADC1()
     GPIO_InitStruct.Pull                        = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin                         = RF_ADC_VDC_Pin;
+    GPIO_InitStruct.Pin                         = RF_ADC_VDC_Pin|RF_ADC_I_Pin|RF_ADC_PHI_Pin;
     GPIO_InitStruct.Mode                        = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull                        = GPIO_NOPULL;
-    HAL_GPIO_Init(RF_ADC_VDC_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(RF_ADC_RFIN_GPIO_Port, &GPIO_InitStruct);
 
     /* ADC1 interrupt Init */
     HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
@@ -141,9 +162,9 @@ Rf_hardware::beginADC1()
 
 /** Configure Channel
   */
-  sConfig1.Channel = ADC_CHANNEL_3;
+  sConfig1.Channel = ADC_CHANNEL_2;
   sConfig1.Rank = ADC_REGULAR_RANK_1;
-  sConfig1.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig1.SamplingTime = ADC_SAMPLETIME_2CYCLE_5;
   sConfig1.SingleDiff = ADC_SINGLE_ENDED;
   sConfig1.OffsetNumber = ADC_OFFSET_NONE;
   sConfig1.Offset = 0;
@@ -165,7 +186,7 @@ Rf_hardware::beginADC1()
     Error_Handler();
   }
 
-  sConfig3.Channel = ADC_CHANNEL_3;
+  sConfig3.Channel = ADC_CHANNEL_4;
   sConfig3.Rank = ADC_REGULAR_RANK_3;
   sConfig3.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
   sConfig3.SingleDiff = ADC_SINGLE_ENDED;
@@ -304,32 +325,26 @@ Rf_hardware::set_debug_pin_state(bool state)
  * 
  * @return float ADC voltage
  */
-float
-Rf_hardware::read_adc_voltage()
-{
-    return ADC_VCC * static_cast<float>(HAL_ADC_GetValue(&hadc1)) / ADC_12BIT;
-}
 
+
+float
 Rf_hardware::read_adc_VDC()
 {
-    uint32_t adc_value = ADC_buffer[0];
-    uint32_t adc_value = adc_data[0];
+    uint32_t adc_value = adc_values[1];
     return adc_value*30;
 }
 
 float 
 Rf_hardware::read_adc_IDC()
 {
-    uint32_t adc_value = ADC_buffer[1];
-    uint32_t adc_value = adc_data[1];
+    uint32_t adc_value = adc_values[2];
     return adc_value/0.4;
 }
 
 float 
 Rf_hardware::read_adc_phi()
 {
-    uint32_t adc_value = ADC_buffer2[0];
-    uint32_t adc_value = adc_data[0];
+    uint32_t adc_value = adc_values[0];
     return adc_value;
 }
 
@@ -346,8 +361,8 @@ Rf_hardware::set_dac_voltage(float v)
     } else if (v > GAIN_CONTROL_MAX) {
         v = GAIN_CONTROL_MAX;
     }
-
-    uint32_t value = static_cast<uint32_t>(ADC_12BIT * (1-v/ ADC_VCC));
+    
+    value = static_cast<uint32_t>(ADC_12BIT * (1-v/ ADC_VCC));
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, value);
 }
 

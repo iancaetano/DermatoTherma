@@ -10,6 +10,11 @@ Rf_module::Rf_module()
 {
   hw.begin();
   power_off();
+
+  filterCount_VDC = 0;
+  filterCount_IDC = 0;
+  filterCount_PHI = 0;
+
 }
 
 // call periodically to update the state
@@ -63,7 +68,7 @@ void Rf_module::set_primary_voltage_rms(float v)
 {
   //if(state == State::running) {
     float v_sat = limit(v, U_min, U_max);
-    float adc_voltage = v_sat/(G_dac_to_pri*V_vga);
+    float RF_VDC = v_sat/(G_dac_to_pri*V_vga);
     set_dac_voltage(v);
   //}
 }
@@ -133,7 +138,7 @@ void Rf_module::update_readings()
 {
   volatile float dac = get_dac_voltage();
   volatile float vprim_rms = V_vga*dac*G_dac_to_pri;
-  volatile float vadc = read_adc_voltage();
+  volatile float vadc = read_RFVDC_voltage();
   primary_current_rms = vadc*G_i_pri_to_adc;
   load_resistance_estimate = vprim_rms / primary_current_rms * T_ratio;
   power_estimate = primary_current_rms * vprim_rms;
@@ -183,10 +188,10 @@ void Rf_module::set_debug_pin_state(bool state)
 }
 
 // returns the raw voltage at the ADC input for the primary side RMS current
-float Rf_module::read_adc_voltage()
+float Rf_module::read_RFVDC_voltage()
 {
-  dio.adc_voltage = hw.read_adc_voltage();
-  return dio.adc_voltage;
+  dio.RF_VDC = hw.read_adc_VDC();
+  return dio.RF_VDC;
 }
 
 // sets raw voltage DAC connected to the VGA -> controls RF amplitude

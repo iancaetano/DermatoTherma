@@ -16,6 +16,7 @@
 #include "TreatmentTimeHandler.h"
 #include "MLX90614.h"
 #include "Handset.h"
+#include "rt/callbackFlag.h"
 
 /* OLED Driver */
 U8G2_SSD1322_NHD_128X64_CUSTOM u8g2(U8G2_R0, /* cs=*/ PC15, /* dc=*/ PB0, /* reset=*/ PB1);
@@ -33,7 +34,7 @@ HandsetClass        Handset;
 
 
 const static int    baudRate = 2000000;
-
+int RTcallbackFlag = 0;
 
 
 /**
@@ -95,7 +96,6 @@ setup() {
     Serial.println("software timer done");
 
     pinMode(PB7, OUTPUT);
-
     Serial.println("setup done");
 
 }
@@ -107,7 +107,10 @@ setup() {
 void
 loop()
 {
-    
+    if (RTcallbackFlag){
+        rtsys.rt_callback();
+        RTcallbackFlag =0;
+    }
     struct Rt_system::Rt_out out;
     rtsys.get_status(out);
     settings.power = out.power_estimate;

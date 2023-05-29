@@ -82,6 +82,14 @@ class Rf_module {
     float load_resistance_estimate; // Ohm
     float power_estimate; // W
   
+    #define nArrayElements  10
+    int filterCount_VDC;
+    int filterCount_IDC;
+    int filterCount_PHI;
+
+    float VDC_Array[nArrayElements];
+    float IDC_Array[nArrayElements];
+    float PHI_Array[nArrayElements];
 
     inline void state_running();
 
@@ -104,7 +112,7 @@ class Rf_module {
 
 
     // returns the raw voltage at the ADC input for the primary side RMS current
-    inline float read_adc_voltage();
+    inline float read_RFVDC_voltage();
     // sets raw voltage DAC connected to the VGA -> controls RF amplitude
     inline void set_dac_voltage(float v);
     inline float get_dac_voltage();
@@ -114,6 +122,6 @@ class Rf_module {
       int pke_enable;
       int opamp_on_input_float; // low -> pull low
       float dac_voltage;
-      float adc_voltage; // input
+      float RF_VDC; // input
     } dio;
 };
