@@ -13,13 +13,13 @@
 #define ADC_VAC2_GPIO_Port          GPIOC
 
 #define RF_ADC_PHI_Pin              GPIO_PIN_1
-#define RF_ADC_RFIN_GPIO_Port        GPIOA
+#define RF_ADC_RFIN_GPIO_Port       GPIOA
 
 #define RF_ADC_I_Pin                GPIO_PIN_2
-#define RF_ADC_RFIN_GPIO_Port        GPIOA
+#define RF_ADC_RFIN_GPIO_Port       GPIOA
 
 #define RF_ADC_VDC_Pin              GPIO_PIN_3
-#define RF_ADC_RFIN_GPIO_Port        GPIOA
+#define RF_ADC_RFIN_GPIO_Port       GPIOA
 
 #define RF_DAC_CONTROL_Pin          GPIO_PIN_4
 #define RF_DAC_CONTROL_GPIO_Port    GPIOA
@@ -31,16 +31,17 @@
 #define ADC_12BIT                   4096.0f
 #define ADC_VCC                     3.3f
 
-
 uint32_t adc_values[3];
 uint32_t lastADCValue[3] = {0};
+bool firstReadI = 1;
 
 const float Rf_hardware::GAIN_CONTROL_MIN = 0.0f;
-const float Rf_hardware::GAIN_CONTROL_MAX = 3.0f;
+const float Rf_hardware::GAIN_CONTROL_MAX = 1.5f;
 
 static TIM_HandleTypeDef            htim2;
 static ADC_HandleTypeDef            hadc1;
 static DAC_HandleTypeDef            hdac1;
+static DMA_HandleTypeDef            hdma_adc1;
 
 Rf_hardware::Rf_hardware()
 {
@@ -49,26 +50,17 @@ Rf_hardware::Rf_hardware()
 
 extern "C" {
 
+/*
 void
 HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
-{
-    int i = 0;
-    HAL_GPIO_TogglePin(DEBUG_GPIO_Port, DEBUG_Pin);
-
+{ 
     if (hadc==&hadc1){
-        float alpha = 0.9;
-        for(int i=0;i<3;i++){
-            adc_values[i] = alpha*HAL_ADC_GetValue(&hadc1)+(1-alpha)*lastADCValue[i];
-            lastADCValue[i] = adc_values[i];
-        }
-    RTcallbackFlag = 1;
+        
     }
-
 }
-
+*/
 };
-void
-Rf_hardware::beginTimer2()
+void Rf_hardware::beginTimer2()
 {
     TIM_ClockConfigTypeDef  sClockSourceConfig  = {0};
     TIM_MasterConfigTypeDef sMasterConfig       = {0};
@@ -76,9 +68,9 @@ Rf_hardware::beginTimer2()
     /* 170 MHz / 1700 = 100 kHz */
     /* 100 kHz / 200 = 500 Hz = 2 ms */
     htim2.Instance                              = TIM2;
-    htim2.Init.Prescaler                        = 1700;
+    htim2.Init.Prescaler                        = 65535;
     htim2.Init.CounterMode                      = TIM_COUNTERMODE_UP;
-    htim2.Init.Period                           = 2;
+    htim2.Init.Period                           = 500;
     htim2.Init.ClockDivision                    = TIM_CLOCKDIVISION_DIV1;
     htim2.Init.AutoReloadPreload                = TIM_AUTORELOAD_PRELOAD_DISABLE;
 
@@ -105,6 +97,7 @@ Rf_hardware::beginTimer2()
     }
 }
 
+
 void
 Rf_hardware::beginADC1()
 {
@@ -128,9 +121,13 @@ Rf_hardware::beginADC1()
   hadc1.Init.NbrOfConversion = 3;
   hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T2_TRGO;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc1.Init.OversamplingMode = DISABLE;
+    /* uses HAL_ADC_MspInit() internally, but unused! */
+    if (HAL_ADC_Init(&hadc1) != HAL_OK) {
+        Error_Handler();
+    }
 
 
     /*** MspInit BEGIN ***/
@@ -155,13 +152,37 @@ Rf_hardware::beginADC1()
     /* ADC1 interrupt Init */
     HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
+    HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
     /*** MspInit END ***/
     
-    /* uses HAL_ADC_MspInit() internally, but unused! */
-    if (HAL_ADC_Init(&hadc1) != HAL_OK) {
+
+    /* DMA controller clock enable */
+    __HAL_RCC_DMAMUX1_CLK_ENABLE();
+    __HAL_RCC_DMA1_CLK_ENABLE();
+
+/* ADC1 DMA Init */
+/* ADC1 Init */
+    hdma_adc1.Instance = DMA1_Channel1;
+    hdma_adc1.Init.Request = DMA_REQUEST_ADC1;
+    hdma_adc1.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_adc1.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_adc1.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_adc1.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+    hdma_adc1.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+    hdma_adc1.Init.Mode = DMA_CIRCULAR;
+    hdma_adc1.Init.Priority = DMA_PRIORITY_LOW;
+
+    __HAL_LINKDMA(&hadc1, DMA_Handle, hdma_adc1);
+
+    if (HAL_DMA_Init(&hdma_adc1) != HAL_OK)
+    {
         Error_Handler();
     }
+
+   
+
 
     /** Configure the ADC multi-mode */
     multimode.Mode                              = ADC_MODE_INDEPENDENT;
@@ -173,7 +194,7 @@ Rf_hardware::beginADC1()
   */
   sConfig1.Channel = ADC_CHANNEL_2;
   sConfig1.Rank = ADC_REGULAR_RANK_1;
-  sConfig1.SamplingTime = ADC_SAMPLETIME_2CYCLE_5;
+  sConfig1.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   sConfig1.SingleDiff = ADC_SINGLE_ENDED;
   sConfig1.OffsetNumber = ADC_OFFSET_NONE;
   sConfig1.Offset = 0;
@@ -185,7 +206,7 @@ Rf_hardware::beginADC1()
 
   sConfig2.Channel = ADC_CHANNEL_3;
   sConfig2.Rank = ADC_REGULAR_RANK_2;
-  sConfig2.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig2.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   sConfig2.SingleDiff = ADC_SINGLE_ENDED;
   sConfig2.OffsetNumber = ADC_OFFSET_NONE;
   sConfig2.Offset = 0;
@@ -197,7 +218,7 @@ Rf_hardware::beginADC1()
 
   sConfig3.Channel = ADC_CHANNEL_4;
   sConfig3.Rank = ADC_REGULAR_RANK_3;
-  sConfig3.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig3.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   sConfig3.SingleDiff = ADC_SINGLE_ENDED;
   sConfig3.OffsetNumber = ADC_OFFSET_NONE;
   sConfig3.Offset = 0;
@@ -280,11 +301,11 @@ Rf_hardware::beginGpio()
 void
 Rf_hardware::begin()
 {
-    
+    beginGpio();
+    beginDAC1();
     beginADC1();
     beginTimer2();
-    beginDAC1();
-    beginGpio();
+    
 
     /* Calibrate w/o start */
     if (HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK) {
@@ -296,9 +317,10 @@ Rf_hardware::begin()
         Error_Handler();
     }
 
-	if (HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
-        Error_Handler();
+	if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_values, 3) != HAL_OK) {
+    Error_Handler();
     }
+
 
     /* Start DAC1 */
     if (HAL_DAC_Start(&hdac1, DAC_CHANNEL_1) != HAL_OK) {
@@ -331,16 +353,23 @@ Rf_hardware::pke_disable()
 
 float
 Rf_hardware::read_adc_VDC()
-{
-    uint32_t adc_value = adc_values[1];
-    return adc_value*30;
+{  
+    float BridgeGain = 4.6;
+    uint32_t adc_value = adc_values[2];
+    float vdc = ADC_VCC/ADC_12BIT*adc_value*BridgeGain; 
+    return vdc;
 }
 
 float 
 Rf_hardware::read_adc_IDC()
 {
-    uint32_t adc_value = adc_values[2];
-    return adc_value/0.4;
+
+    float Rshunt = 0.05;
+    float AmpGain = 10;
+    float Ioffset = 0.5;
+    float idc = (ADC_VCC/ADC_12BIT*adc_values[1]-Ioffset)/Rshunt/AmpGain;
+    dummy_IDC = idc;
+    return idc;
 }
 
 float 
@@ -358,6 +387,7 @@ Rf_hardware::read_adc_phi()
 void
 Rf_hardware::set_dac_voltage(float v)
 {
+    
     if (v < GAIN_CONTROL_MIN) {
         v = GAIN_CONTROL_MIN;
     } else if (v > GAIN_CONTROL_MAX) {
@@ -365,6 +395,7 @@ Rf_hardware::set_dac_voltage(float v)
     }
     
     value = static_cast<uint32_t>(ADC_12BIT * (1-v/ ADC_VCC));
+    
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, value);
 }
 
@@ -374,3 +405,11 @@ ADC1_2_IRQHandler(void)
 {
     HAL_ADC_IRQHandler(&hadc1);
 }
+
+extern "C" void
+DMA1_Channel1_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_adc1);
+  RTcallbackFlag = 1;
+}
+

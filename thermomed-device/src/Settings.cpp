@@ -3,7 +3,7 @@
 Settings::Settings()
 {
     temperatureActual      = 0.0f;
-    temperatureSetpoint    = 50.0f;
+    temperatureSetpoint    = 42.0f;
     volume                 = 1;
     rfPowerOn              = false;
     timeHeating            = 0;

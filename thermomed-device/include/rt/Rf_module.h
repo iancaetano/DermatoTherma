@@ -8,6 +8,15 @@
 
 class Rf_module {
   public:
+
+    float read_RFVDC();
+    float read_RFI();
+    float read_RFPHI();
+
+    volatile float idc;
+    volatile float vdc;
+
+    void set_dac_voltage(float v);
     enum class State {undef, off, enabling, running, tripped};
     enum class Trip_cause {undef, opamp_protection, overcurrent_measured,
                            rl_estimate_too_low, rl_estimate_too_high};
@@ -27,12 +36,13 @@ class Rf_module {
 
     // only valid in running state
     float get_primary_voltage_rms();
-    float get_primary_current_rms();
+    float get_primary_current();
     float get_load_resistance_estimate();
     float get_power_estimate();
 
     float get_max_primary_voltage_rms();
 
+    
   private:
     enum class Rf_enabling_step {
       s0_undef,
@@ -109,10 +119,9 @@ class Rf_module {
     inline void pke_disable();
 
 
-    // returns the raw voltage at the ADC input for the primary side RMS current
-    inline float read_RFVDC_voltage();
+
     // sets raw voltage DAC connected to the VGA -> controls RF amplitude
-    inline void set_dac_voltage(float v);
+    
     inline float get_dac_voltage();
 
     // control via debugger
@@ -121,5 +130,7 @@ class Rf_module {
       int opamp_on_input_float; // low -> pull low
       float dac_voltage;
       float RF_VDC; // input
+      float RF_IDC;
+      float RF_PHI;
     } dio;
 };

@@ -134,12 +134,13 @@ void Rt_system::rt_callback()
           }
         }
         
+        /*
         if(hardware_err || safety_err || abort) {
           ctrl.stop();
           rfmod.power_off();
           rt_status = Rt_status::error;
         
-        } else if (iv.stop_treatment) {
+        } */else if (iv.stop_treatment) {
           ctrl.stop();
           rfmod.power_off();
           rt_status = Rt_status::off;
@@ -148,8 +149,7 @@ void Rt_system::rt_callback()
           if(rfmodstate == Rf_module::State::running) {
             u_sat_cv = ctrl.update(iv.temp_sp, iv.temp_pv);
             dummy_Y = u_sat_cv;
-            rfmod.set_primary_voltage_rms(0); 
-            //rfmod.set_primary_voltage_rms(u_sat_cv);
+            rfmod.set_primary_voltage_rms(u_sat_cv);
           }
         }
         break;

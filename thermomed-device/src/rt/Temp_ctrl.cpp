@@ -8,7 +8,7 @@
 //static float ki = 0.0175;   
 //static float kd = 0.25;     
 
-static float kp = 0.7;
+static float kp = 0.4;
 static float ki = 0.035;
 static float kd = 0.25;
 

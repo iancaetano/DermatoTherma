@@ -8,7 +8,11 @@ class Rf_hardware {
         static const float GAIN_CONTROL_MAX;
         
     public:
+    
+        float adc_value_I;
         float value;
+        float dummy_IDC;
+
         Rf_hardware();
         void begin();
 

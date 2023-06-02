@@ -9,6 +9,7 @@ static constexpr float limit(float x, float lol, float hil)
 Rf_module::Rf_module()
 {
   hw.begin();
+  set_dac_voltage(0.1);
   power_off();
 
   filterCount_VDC = 0;
@@ -47,16 +48,17 @@ void Rf_module::enable()
     trip_cause = Trip_cause::undef;
     state = State::enabling;
     // transition into first first step of enabling sequence 
-    set_primary_voltage_rms(0);
+    set_primary_voltage_rms(0.1);
     pke_enable();
     seq_timer.restart_with_new_time(Delay::pke_start);
+    state = State::running;
   }
 }
 
 // moves from any state to off
 void Rf_module::power_off()
 {
-  set_dac_voltage(0);
+  set_dac_voltage(0.1);
   pke_disable();
   module_reenable_lockout_timer.restart();
   state = State::off;
@@ -67,8 +69,6 @@ void Rf_module::power_off()
 void Rf_module::set_primary_voltage_rms(float v)
 {
   //if(state == State::running) {
-    float v_sat = limit(v, U_min, U_max);
-    float RF_VDC = v_sat/(G_dac_to_pri*V_vga);
     set_dac_voltage(v);
   //}
 }
@@ -86,7 +86,7 @@ float Rf_module::get_primary_voltage_rms()
 }
 
 // only valid in running state
-float Rf_module::get_primary_current_rms()
+float Rf_module::get_primary_current()
 {
   if(state != State::off)
     return primary_current_rms;
@@ -137,17 +137,17 @@ void Rf_module::state_enabling()
 void Rf_module::update_readings()
 {
   volatile float dac = get_dac_voltage();
-  volatile float vprim_rms = V_vga*dac*G_dac_to_pri;
-  volatile float vadc = read_RFVDC_voltage();
-  primary_current_rms = vadc*G_i_pri_to_adc;
-  load_resistance_estimate = vprim_rms / primary_current_rms * T_ratio;
-  power_estimate = primary_current_rms * vprim_rms;
+  vdc = read_RFVDC();
+  idc = read_RFI();
+  volatile float phi = read_RFPHI();
+  load_resistance_estimate = vdc/idc;
+  power_estimate = idc * vdc;
 }
 
 void Rf_module::assure_safe_operating_point()
 {
   Trip_cause cause = Trip_cause::undef;
-
+/*
   if (primary_current_rms < I_min_running)
     cause = Trip_cause::opamp_protection;
   else if (primary_current_rms > I_max)
@@ -161,6 +161,7 @@ void Rf_module::assure_safe_operating_point()
     power_off();
     this->state = State::tripped;        
   }
+  */
   this->trip_cause = cause;
 
 }
@@ -185,10 +186,22 @@ void Rf_module::pke_disable()
 
 
 // returns the raw voltage at the ADC input for the primary side RMS current
-float Rf_module::read_RFVDC_voltage()
+float Rf_module::read_RFVDC()
 {
   dio.RF_VDC = hw.read_adc_VDC();
   return dio.RF_VDC;
+}
+
+float Rf_module::read_RFI()
+{
+  dio.RF_IDC = hw.read_adc_IDC();
+  return dio.RF_IDC;
+}
+
+float Rf_module::read_RFPHI()
+{
+  dio.RF_PHI = hw.read_adc_phi();
+  return dio.RF_PHI;
 }
 
 // sets raw voltage DAC connected to the VGA -> controls RF amplitude
