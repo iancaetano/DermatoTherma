@@ -186,11 +186,12 @@ PushButton(PA10, *this)
 
 void StartButton::handle(int pin, PushButtonEvent event){
 
-static bool onOff = false;
+    static bool onOff = false;
 
     if (event == PUSH_BUTTON_PRESS_EDGE) {
         onOff = !onOff;
         if (onOff) {
+
             treatmentTimeHandler.reset();
             rtsys.start_treatment();
             settings.rfPowerOn = 1;

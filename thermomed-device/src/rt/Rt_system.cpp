@@ -1,5 +1,6 @@
 #include "rt/Rt_system.h"
 
+
 uint32_t start_delay_ms = 3000;
 static float delta_temp_min = 1;   //VERAENDERT WAR AUF 0.1
 static float sp_offset = 2.;
@@ -75,6 +76,7 @@ void Rt_system::stop_treatment()
   ivs_in_use = true;
   ivs.stop_treatment = true;
   ivs_in_use = false;
+
 } 
 
 void Rt_system::get_status(struct Rt_system::Rt_out &s) // output
@@ -93,8 +95,6 @@ void Rt_system::rt_callback()
   Safety_supervisor::Assessment_result res;
   bool hardware_err;
   bool safety_err;
-
-
 
   new_ml_vals = read_inputs(); // receive inputs from main loop
 

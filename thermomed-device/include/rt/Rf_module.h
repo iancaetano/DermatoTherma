@@ -5,6 +5,7 @@
 
 #include "rt/Rf_hardware.h"
 #include "rt/Countdown_timer.h"
+#include "sound.h"
 
 class Rf_module {
   public:
@@ -19,7 +20,7 @@ class Rf_module {
     void set_dac_voltage(float v);
     enum class State {undef, off, enabling, running, tripped};
     enum class Trip_cause {undef, opamp_protection, overcurrent_measured,
-                           rl_estimate_too_low, rl_estimate_too_high};
+                           rl_estimate_too_low, rl_estimate_too_high, temp_low, temp_high};
 
     Rf_module();
 
@@ -68,12 +69,12 @@ class Rf_module {
     //TODO: convert to const?
     float T_ratio = 9.0; // impedance transformation ratio
     float Rl_min = 100.0; // minimal supported load resistance
-    float Rl_max = 1000.0; // maximal supported load resistance
+    float Rl_max = 250.0; // maximal supported load resistance
     float V_vga = 0.041043; //
     float U_min = 3;   // minimum voltage at amplifier output (RMS) (make > 0V)
     float U_max = 18; // maximum possible voltage at amplifier output (RMS) (note: could be dominated by DAC limit)
     float I_min_running = 0.020; // minimum measured current when running [A_RMS]
-    float I_max = 0.7;
+    float I_max = 1.5;
     float G_tr_pri_to_sec = 3; // gain: primary voltage -> secundary voltage  [V/V]
     float G_i_pri_to_adc = 0.2614; // gain: primary RMS current -> ADC voltage [V/A_RMS]
     float G_dac_to_pri = 102.81; // gain:  DAC voltage -> primary voltage [V_RMS/V]
@@ -98,6 +99,8 @@ class Rf_module {
     float VDC_Array[nArrayElements];
     float IDC_Array[nArrayElements];
     float PHI_Array[nArrayElements];
+
+    void resetValues();
 
     inline void state_running();
 

@@ -1,5 +1,8 @@
 
 #include "rt/Rf_module.h"
+#include  "main.h"
+#include "Settings.h"
+#include "sound.h"
 
 static constexpr float limit(float x, float lol, float hil)
 {
@@ -52,17 +55,25 @@ void Rf_module::enable()
     pke_enable();
     seq_timer.restart_with_new_time(Delay::pke_start);
     state = State::running;
+    Sound.TreatmentTone(settings.temperatureActual);
+    Sound.sound_enable();
+    
   }
 }
 
 // moves from any state to off
 void Rf_module::power_off()
 {
+  rtsys.stop_treatment();
+  settings.rfPowerOn = 0;
   set_dac_voltage(0.1);
   pke_disable();
   module_reenable_lockout_timer.restart();
   state = State::off;
   trip_cause = Trip_cause::undef;
+  resetValues();
+  Sound.sound_disable();
+
 }
 
 // no effect outside of running state
@@ -120,6 +131,7 @@ float Rf_module::get_max_primary_voltage_rms()
 void Rf_module::state_running() {
   update_readings();
   assure_safe_operating_point();
+  Sound.TreatmentTone(settings.temperatureActual);
 }
 
 // this is a transitional state, implementing a timed sequence of steps
@@ -147,21 +159,26 @@ void Rf_module::update_readings()
 void Rf_module::assure_safe_operating_point()
 {
   Trip_cause cause = Trip_cause::undef;
-/*
-  if (primary_current_rms < I_min_running)
-    cause = Trip_cause::opamp_protection;
-  else if (primary_current_rms > I_max)
+
+
+  if (idc > I_max)
     cause = Trip_cause::overcurrent_measured;
+  else if(settings.temperatureActual<30)
+    cause = Trip_cause::temp_low;
+  else if(settings.temperatureActual>55)
+    cause = Trip_cause::temp_high;
+  /*
   else if (load_resistance_estimate < Rl_min)
     cause = Trip_cause::rl_estimate_too_low;
+
   else if (load_resistance_estimate > Rl_max)
     cause = Trip_cause::rl_estimate_too_low;
+*/
 
   if(cause != Trip_cause::undef) {
     power_off();
     this->state = State::tripped;        
   }
-  */
   this->trip_cause = cause;
 
 }
@@ -180,8 +197,6 @@ void Rf_module::pke_disable()
   hw.pke_disable();
   dio.pke_enable = false;
 }
-
-
 
 
 
@@ -214,4 +229,12 @@ void Rf_module::set_dac_voltage(float v)
 float Rf_module::get_dac_voltage()
 {
   return dio.dac_voltage;
+}
+
+
+void 
+Rf_module::resetValues()
+{
+  idc = 0;
+  vdc = 0;
 }

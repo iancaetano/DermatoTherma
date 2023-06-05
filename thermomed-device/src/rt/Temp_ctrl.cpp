@@ -8,9 +8,9 @@
 //static float ki = 0.0175;   
 //static float kd = 0.25;     
 
-static float kp = 0.4;
-static float ki = 0.035;
-static float kd = 0.25;
+static float kp = 0.25;
+static float ki = 0.02;
+static float kd = 0.2;
 
 //TODO probably better no var for limits here. use rf module!
 static float power_cv_min = 0.1; 
@@ -35,7 +35,7 @@ float Temp_ctrl::update(float t_sp, float t_pv)
   p_sat =  pi.update(t_sp, t_pv);
   // convert from power cv to cv output to present a linear
   // behaving plant to the PI      
-  u_sat = sqrt(p_sat * rl_dummy_prim);
+  u_sat = p_sat;
   return u_sat;
 }
 /****/

@@ -172,7 +172,7 @@ Rf_hardware::beginADC1()
     hdma_adc1.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
     hdma_adc1.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
     hdma_adc1.Init.Mode = DMA_CIRCULAR;
-    hdma_adc1.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_adc1.Init.Priority = DMA_PRIORITY_MEDIUM;
 
     __HAL_LINKDMA(&hadc1, DMA_Handle, hdma_adc1);
 
@@ -181,7 +181,6 @@ Rf_hardware::beginADC1()
         Error_Handler();
     }
 
-   
 
 
     /** Configure the ADC multi-mode */
@@ -311,8 +310,7 @@ Rf_hardware::begin()
     if (HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK) {
         Error_Handler();
     }
-    
-    /* Start TIM2 and ADC1 */
+
 	if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
         Error_Handler();
     }
@@ -366,7 +364,7 @@ Rf_hardware::read_adc_IDC()
 
     float Rshunt = 0.05;
     float AmpGain = 10;
-    float Ioffset = 0.5;
+    float Ioffset = 0.4;
     float idc = (ADC_VCC/ADC_12BIT*adc_values[1]-Ioffset)/Rshunt/AmpGain;
     dummy_IDC = idc;
     return idc;

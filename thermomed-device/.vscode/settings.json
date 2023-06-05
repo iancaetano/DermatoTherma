@@ -10,6 +10,15 @@
         "memory": "cpp",
         "random": "cpp",
         "initializer_list": "cpp",
-        "optional": "cpp"
+        "optional": "cpp",
+        "*.xbm": "cpp",
+        "fstream": "cpp",
+        "istream": "cpp",
+        "numeric": "cpp",
+        "ostream": "cpp",
+        "sstream": "cpp",
+        "cmath": "cpp",
+        "cstddef": "cpp",
+        "functional": "cpp"
     }
 }

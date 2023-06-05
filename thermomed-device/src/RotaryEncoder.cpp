@@ -23,7 +23,7 @@ RotaryEncoder::begin()
     m_htim3.Instance                        = TIM3;
     m_htim3.Init.Prescaler                  = 0;
     m_htim3.Init.CounterMode                = TIM_COUNTERMODE_UP;
-    m_htim3.Init.Period                     = 65535;
+    m_htim3.Init.Period                     = 500;
     m_htim3.Init.ClockDivision              = TIM_CLOCKDIVISION_DIV1;
     m_htim3.Init.AutoReloadPreload          = TIM_AUTORELOAD_PRELOAD_DISABLE;
 

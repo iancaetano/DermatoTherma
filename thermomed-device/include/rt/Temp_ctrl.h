@@ -18,5 +18,5 @@ class Temp_ctrl {
     Pid_ctrl pi;
     uint16_t pi_sample_period_ms = 20;  //orig 50
     
-    float rl_dummy_prim = 100./9.; // serves as an estimate for the true load
+    float rl_dummy_prim = 10./9.; // serves as an estimate for the true load
 };
