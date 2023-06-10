@@ -52,6 +52,8 @@ m_timer(TIM6)
     m_timer.refresh();
 
     m_timer.attachInterrupt(std::bind(&SoftwareTimer::interrupt, this));
+
+    volatile int i = 1;
 }
 
 void
@@ -102,4 +104,3 @@ SoftwareTimer::interrupt()
         }
     }
 }
-

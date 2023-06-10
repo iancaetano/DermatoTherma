@@ -74,7 +74,7 @@ class Rf_module {
     float U_min = 3;   // minimum voltage at amplifier output (RMS) (make > 0V)
     float U_max = 18; // maximum possible voltage at amplifier output (RMS) (note: could be dominated by DAC limit)
     float I_min_running = 0.020; // minimum measured current when running [A_RMS]
-    float I_max = 1.5;
+    float I_max = 1.7;
     float G_tr_pri_to_sec = 3; // gain: primary voltage -> secundary voltage  [V/V]
     float G_i_pri_to_adc = 0.2614; // gain: primary RMS current -> ADC voltage [V/A_RMS]
     float G_dac_to_pri = 102.81; // gain:  DAC voltage -> primary voltage [V_RMS/V]

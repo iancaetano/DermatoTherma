@@ -10,7 +10,10 @@ class TreatmentTimeHandler : public SoftwareTimerHandler {
         static const float OFFSET;
         bool m_isTreating;
         bool m_isThresholdExceeded;
+        void myCallback();
+        void beginTimer15();
     public: 
+        void init();
         bool isTreating() const {
             return m_isTreating;
         }
@@ -23,6 +26,7 @@ class TreatmentTimeHandler : public SoftwareTimerHandler {
     /* SoftwareTimerHandler in Interrupt mode */
     public:
         virtual void handle();
+        
 
 };
 

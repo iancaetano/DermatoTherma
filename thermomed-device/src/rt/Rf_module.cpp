@@ -3,6 +3,7 @@
 #include  "main.h"
 #include "Settings.h"
 #include "sound.h"
+#include "rt/Flags.h"
 
 static constexpr float limit(float x, float lol, float hil)
 {
@@ -54,9 +55,9 @@ void Rf_module::enable()
     set_primary_voltage_rms(0.1);
     pke_enable();
     seq_timer.restart_with_new_time(Delay::pke_start);
-    state = State::running;
     Sound.TreatmentTone(settings.temperatureActual);
     Sound.sound_enable();
+    state = State::running;
     
   }
 }
@@ -177,6 +178,7 @@ void Rf_module::assure_safe_operating_point()
 
   if(cause != Trip_cause::undef) {
     power_off();
+    errorFlag = 1;
     this->state = State::tripped;        
   }
   this->trip_cause = cause;

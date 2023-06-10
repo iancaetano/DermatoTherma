@@ -1,3 +1,4 @@
+
 #include "TreatmentTimeHandler.h"
 
 const float TreatmentTimeHandler::OFFSET = 0.5f;

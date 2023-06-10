@@ -1,6 +1,6 @@
 #include "rt/Rf_hardware.h"
 #include <Arduino.h>
-#include "rt/callbackFlag.h"
+#include "rt/Flags.h"
 
 
 #define DEBUG_Pin                   GPIO_PIN_10
@@ -362,9 +362,9 @@ float
 Rf_hardware::read_adc_IDC()
 {
 
-    float Rshunt = 0.05;
+    float Rshunt = 0.1;
     float AmpGain = 10;
-    float Ioffset = 0.4;
+    float Ioffset = 0.5;
     float idc = (ADC_VCC/ADC_12BIT*adc_values[1]-Ioffset)/Rshunt/AmpGain;
     dummy_IDC = idc;
     return idc;

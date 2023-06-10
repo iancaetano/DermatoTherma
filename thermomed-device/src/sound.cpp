@@ -2,14 +2,15 @@
 #include "sound.h"
 #include "rt/Rt_system.h"
 #include "TreatmentTimeHandler.h"
-#include <chrono> // For time tracking
-#include <sys/time.h>
+#include "rt/Flags.h"
 
 #define AUDIO_ENABLE_Pin                   GPIO_PIN_5
 #define AUDIO_ENABLE_GPIO_Port             GPIOC
 
 #define AUDIO_DAC_Pin                      GPIO_PIN_6
 #define AUDIO_DAC_GPIO_Port                GPIOA
+
+bool errorFlag = false;
 
 DAC_HandleTypeDef hdac2;
 DMA_HandleTypeDef hdma_dac2;
@@ -37,6 +38,7 @@ uint32_t *ptrLUT = Wave_LUT;
 
 void SoundSender::begin(void)
 {
+  
   MX_GPIO_Init();
   //MX_DMA_Init();
   MX_DAC2_Init();
@@ -124,10 +126,7 @@ void SoundSender::MX_DAC2_Init(void)
     {
       Error_Handler();
     }
-
-
 }
-
  
  void SoundSender::MX_TIM7_Init(void)
 {
@@ -162,32 +161,50 @@ void SoundSender::MX_DAC2_Init(void)
 
 }
 
-/**
-  * Enable DMA controller clock
-  */
-void SoundSender::MX_DMA_Init(void)
+void SoundSender::loop()
 {
+  if(settings.rfPowerOn && Sound.getBeepFlag()){
+        static unsigned long beepStart = 0;
+        const unsigned long beepDuration = 500; // Duration of beep in milliseconds
+        const unsigned long beepPeriod = 2000; // Period of beep in milliseconds
+        
+        if (millis() - beepStart < beepDuration) {
+            if (!Sound.isSoundEnabled()) {
+                Sound.sound_enable();  // Enable sound at the beginning of each period
+            }
+        } else if (Sound.isSoundEnabled()) {
+            Sound.sound_disable();  // Disable sound after beep duration
+        }
 
-  /* DMA controller clock enable */
+        // Reset the beep timer if the period has passed
+        if (millis() - beepStart >= beepPeriod) {
+            beepStart = millis();
+        }
+    }
+        if(errorFlag){
+        static unsigned long errorStart = 0;
+        const unsigned long errorDuration = 1000; // Duration of error tone in milliseconds
 
+        if (millis() - errorStart < errorDuration) {
+            if (!Sound.isSoundEnabled()) {
+                Sound.ErrorTone();  // Start error tone at the beginning of duration
+            }
+        } else if (Sound.isSoundEnabled()) {
+            Sound.sound_disable();  // Disable sound after error duration
+        }
 
+        // Reset the error timer if the duration has passed
+        if (millis() - errorStart >= errorDuration) {
+            errorFlag = 0; // Reset the error flag
+            errorStart = millis();
+        }
+    }
 }
-
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-
-
-
-
 
 void SoundSender::TreatmentTone(float temp)
 {
-    static auto start_time = std::chrono::high_resolution_clock::now(); // Start time
-
     if(!treatmentTimeHandler.Treshexeeded()){
+        beepFlag = 0;
         int toneAt50 = 1300;
         int toneAt20 = 1000;
         int dt = toneAt50-toneAt20;
@@ -195,29 +212,14 @@ void SoundSender::TreatmentTone(float temp)
         uint32_t timerPeriod = toneAt50 - dt/dT*temp;
         setPeriod(&htim7,timerPeriod);
     } else if(treatmentTimeHandler.Treshexeeded()){
-        // Get current time
-        auto current_time = std::chrono::high_resolution_clock::now();
-
-        // Calculate elapsed time in seconds
-        double elapsed_time = std::chrono::duration<double>(current_time - start_time).count();
-
-        // If less than 0.5 seconds have passed, set a tone
-        if (elapsed_time < 0.5) {
-            uint32_t timerPeriod = 1000; // Tone
-            setPeriod(&htim7,timerPeriod);
-        }
-        // If between 0.5 and 1.5 seconds have passed, set no tone
-        else if (elapsed_time >= 0.5 && elapsed_time < 1.5) {
-            // Silence
-            // Set the period to a value that indicates no tone
-            // This will depend on your specific hardware and software
-            setPeriod(&htim7,5000);
-        }
-        // Reset the timer after 1.5 seconds
-        else if (elapsed_time >= 1.5) {
-            start_time = current_time;
-        }
+        beepFlag = 1;
     }
+}
+
+void 
+SoundSender::ErrorTone(){
+  uint32_t errorTonePeriod = 2000;
+  setPeriod(&htim7,errorTonePeriod);
 }
 
 
@@ -245,6 +247,7 @@ void
 SoundSender::sound_disable()
 {
     HAL_GPIO_WritePin(AUDIO_ENABLE_GPIO_Port, AUDIO_ENABLE_Pin, GPIO_PIN_SET);
+    isSoundOn = false;
 }
 
 
@@ -252,20 +255,17 @@ void
 SoundSender::sound_enable()
 {
     HAL_GPIO_WritePin(AUDIO_ENABLE_GPIO_Port, AUDIO_ENABLE_Pin, GPIO_PIN_RESET);
+    isSoundOn = true;
 }
+
+  bool 
+  SoundSender::isSoundEnabled() {
+        return isSoundOn;
+    }
 
 
 extern "C" void 
 DMA1_Channel2_IRQHandler(void)
 {
   HAL_DMA_IRQHandler(&hdma_dac2);
-}
-
-
-
-
-
-extern "C" int _gettimeofday(struct timeval *__p, void *__tz)
-{
-    return 0;
 }

@@ -10,12 +10,12 @@
 #include "PushButton.h"
 #include "BQ25792.h"
 #include "SoftwareTimer.h"
-#include "Sound.h"
+#include "sound.h"
 #include "Menu.h"
 #include "TreatmentTimeHandler.h"
 #include "MLX90614.h"
 #include "Handset.h"
-#include "rt/callbackFlag.h"
+#include "rt/Flags.h"
 
 /* OLED Driver */
 U8G2_SSD1322_NHD_128X64_CUSTOM u8g2(U8G2_R0, /* cs=*/ PC15, /* dc=*/ PB0, /* reset=*/ PB1);
@@ -31,7 +31,8 @@ MLX90614            TempSensor;
 HandsetClass        Handset;
 SoundSender         Sound;
 
-
+unsigned long previousMillis = 0; 
+const long interval = 2000; 
 
 const static int    baudRate = 2000000;
 int RTcallbackFlag = 0;
@@ -60,7 +61,7 @@ setup() {
     Serial.println("display done");
 
     encoder.begin();
-    encoder.start();
+    //encoder.start();
     Serial.println("encoder done");
 
     Handset.init();
@@ -69,21 +70,20 @@ setup() {
     rtsys.init();
     rtsys.set_temp_sp(settings.temperatureSetpoint);
     Serial.println("rtsys done");
+    Sound.begin(); //call after rf Hardware
 
- 
-
-    treatmentTimeHandler.reset();
 
     swTimer.addHandler(250, SoftwareTimer::AUTO_RELOAD, bq25792);
     swTimer.addHandler(20, SoftwareTimer::AUTO_RELOAD, Handset);
     swTimer.addHandler(1000, SoftwareTimer::AUTO_RELOAD, treatmentTimeHandler);
+
     swTimer.begin();
     Serial.println("software timer done");
 
     pinMode(PB7, OUTPUT);
     Serial.println("setup done");
 
-    Sound.begin(); //call after rf Hardware
+    
 }
 
 
@@ -97,6 +97,8 @@ loop()
         rtsys.rt_callback();
         RTcallbackFlag =0;
     }
+
+    Sound.loop();
     struct Rt_system::Rt_out out;
     rtsys.get_status(out);
     settings.power = out.power_estimate;
