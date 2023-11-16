@@ -1,5 +1,6 @@
 #include "rt/Rt_system.h"
 
+
 uint32_t start_delay_ms = 3000;
 static float delta_temp_min = 1;   //VERAENDERT WAR AUF 0.1
 static float sp_offset = 2.;
@@ -75,6 +76,7 @@ void Rt_system::stop_treatment()
   ivs_in_use = true;
   ivs.stop_treatment = true;
   ivs_in_use = false;
+
 } 
 
 void Rt_system::get_status(struct Rt_system::Rt_out &s) // output
@@ -93,8 +95,6 @@ void Rt_system::rt_callback()
   Safety_supervisor::Assessment_result res;
   bool hardware_err;
   bool safety_err;
-
-  rfmod.set_debug_pin_state(true);
 
   new_ml_vals = read_inputs(); // receive inputs from main loop
 
@@ -134,19 +134,22 @@ void Rt_system::rt_callback()
           }
         }
         
+        /*
         if(hardware_err || safety_err || abort) {
           ctrl.stop();
           rfmod.power_off();
           rt_status = Rt_status::error;
-        } else if (iv.stop_treatment) {
+        
+        } */else if (iv.stop_treatment) {
           ctrl.stop();
           rfmod.power_off();
           rt_status = Rt_status::off;
         } else {
           Rf_module::State rfmodstate = rfmod.get_state();
           if(rfmodstate == Rf_module::State::running) {
-            u_sat_cv = ctrl.update(iv.temp_sp, iv.temp_pv); 
-            rfmod.set_primary_voltage_rms(u_sat_cv); // Glaube hier können wir die einheitssprungantwort Messen. (u_sat_cv = 1)
+            u_sat_cv = ctrl.update(iv.temp_sp, iv.temp_pv);
+            dummy_Y = u_sat_cv;
+            rfmod.set_primary_voltage_rms(u_sat_cv);
           }
         }
         break;
@@ -169,7 +172,6 @@ void Rt_system::rt_callback()
     write_outputs(); // prepare outputs for main loop
   }
 
-  rfmod.set_debug_pin_state(false);
 }
 
 /*** savely access main loop IOs ***/

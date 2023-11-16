@@ -6,16 +6,16 @@
 
 #include "Settings.h"
 #include "Console.h"
-//#include "HandsetCommunication.h"
 #include "RotaryEncoder.h"
 #include "PushButton.h"
 #include "BQ25792.h"
 #include "SoftwareTimer.h"
-#include "SoundSender.h"
+#include "sound.h"
 #include "Menu.h"
 #include "TreatmentTimeHandler.h"
 #include "MLX90614.h"
 #include "Handset.h"
+#include "rt/Flags.h"
 
 /* OLED Driver */
 U8G2_SSD1322_NHD_128X64_CUSTOM u8g2(U8G2_R0, /* cs=*/ PC15, /* dc=*/ PB0, /* reset=*/ PB1);
@@ -29,11 +29,13 @@ SoftwareTimer       swTimer;
 Rt_system           rtsys;
 MLX90614            TempSensor;
 HandsetClass        Handset;
+SoundSender         Sound;
 
-
+unsigned long previousMillis = 0; 
+const long interval = 2000; 
 
 const static int    baudRate = 2000000;
-
+int RTcallbackFlag = 0;
 
 
 /**
@@ -59,45 +61,29 @@ setup() {
     Serial.println("display done");
 
     encoder.begin();
-    encoder.start();
+    //encoder.start();
     Serial.println("encoder done");
 
     Handset.init();
     Serial.println("Handset done");
 
-    /*
-    #define MCO_Pin GPIO_PIN_8
-    #define MCO_GPIO_Port GPIOA
-
-    GPIO_InitTypeDef        GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin                     = MCO_Pin;
-    GPIO_InitStruct.Mode                    = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull                    = GPIO_NOPULL;
-    GPIO_InitStruct.Speed                   = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate               = GPIO_AF0_MCO;
-
-    HAL_GPIO_Init(MCO_GPIO_Port, &GPIO_InitStruct);
-    HAL_RCC_MCOConfig(RCC_MCO1,RCC_MCO1SOURCE_PLLCLK,RCC_MCODIV_2);
-
-*/
     rtsys.init();
     rtsys.set_temp_sp(settings.temperatureSetpoint);
     Serial.println("rtsys done");
+    Sound.begin(); //call after rf Hardware
 
-    treatmentTimeHandler.reset();
 
     swTimer.addHandler(250, SoftwareTimer::AUTO_RELOAD, bq25792);
-    //swTimer.addHandler(50, SoftwareTimer::AUTO_RELOAD, comm);
     swTimer.addHandler(20, SoftwareTimer::AUTO_RELOAD, Handset);
-    swTimer.addHandler(100, SoftwareTimer::AUTO_RELOAD, soundSender);
     swTimer.addHandler(1000, SoftwareTimer::AUTO_RELOAD, treatmentTimeHandler);
+
     swTimer.begin();
     Serial.println("software timer done");
 
     pinMode(PB7, OUTPUT);
-
     Serial.println("setup done");
 
+    
 }
 
 
@@ -107,20 +93,22 @@ setup() {
 void
 loop()
 {
-    
+    if (RTcallbackFlag){
+        rtsys.rt_callback();
+        RTcallbackFlag =0;
+    }
+
+    Sound.loop();
     struct Rt_system::Rt_out out;
     rtsys.get_status(out);
     settings.power = out.power_estimate;
     console.loop();
     bq25792.loop();
     treatmentTimeHandler.loop(out);
-    soundSender.loop(out);
     Handset.loop();
-    // comm.loop(out);
     rotaryButton.checkPin();
     powerButton.checkPin();
     nav.setChange(encoder.difference());
-    
     nav.draw();
     
 

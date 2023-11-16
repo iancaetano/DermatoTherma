@@ -2,7 +2,6 @@
 #include "Menu.h"
 #include "main.h"
 
-#include "SoundSender.h"
 
 #include "images/oled1.xbm"
 #include "images/about.xbm"

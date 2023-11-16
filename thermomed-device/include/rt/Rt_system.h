@@ -5,12 +5,14 @@
 #include "rt/Safety_supervisor.h"
 #include "rt/Temp_ctrl.h"
 
+
 extern uint32_t start_delay_ms;
 
 // Runs in its own context by calling rt_callback().
 class Rt_system {
   public:
 
+    float dummy_Y;
     Rt_system();
     // state indicator for main loop
     enum class Rt_status {undef, off, treating, error}; 

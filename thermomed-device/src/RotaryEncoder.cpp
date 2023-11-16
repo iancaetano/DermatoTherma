@@ -1,3 +1,4 @@
+
 #include "RotaryEncoder.h"
 
 #include <stm32_def.h>

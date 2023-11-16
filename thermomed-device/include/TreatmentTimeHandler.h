@@ -8,18 +8,25 @@ class TreatmentTimeHandler : public SoftwareTimerHandler {
 
     private:
         static const float OFFSET;
-
-    private:
         bool m_isTreating;
         bool m_isThresholdExceeded;
-
-    public:
+        void myCallback();
+        void beginTimer15();
+    public: 
+        void init();
+        bool isTreating() const {
+            return m_isTreating;
+        }
+        bool Treshexeeded() const {
+            return m_isThresholdExceeded;
+        }
         void reset();
         void loop(Rt_system::Rt_out &out);
 
     /* SoftwareTimerHandler in Interrupt mode */
     public:
         virtual void handle();
+        
 
 };
 

@@ -1,4 +1,5 @@
 
+
 #ifndef __ROTARY_ENCODER_H__
 #define __ROTARY_ENCODER_H__
 

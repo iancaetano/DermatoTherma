@@ -1,5 +1,9 @@
 
 #include "rt/Rf_module.h"
+#include  "main.h"
+#include "Settings.h"
+#include "sound.h"
+#include "rt/Flags.h"
 
 static constexpr float limit(float x, float lol, float hil)
 {
@@ -9,7 +13,13 @@ static constexpr float limit(float x, float lol, float hil)
 Rf_module::Rf_module()
 {
   hw.begin();
+  set_dac_voltage(0.1);
   power_off();
+
+  filterCount_VDC = 0;
+  filterCount_IDC = 0;
+  filterCount_PHI = 0;
+
 }
 
 // call periodically to update the state
@@ -42,31 +52,36 @@ void Rf_module::enable()
     trip_cause = Trip_cause::undef;
     state = State::enabling;
     // transition into first first step of enabling sequence 
-    rf_enabling_step = Rf_enabling_step::s1_power_up;
-    set_primary_voltage_rms(0);
+    set_primary_voltage_rms(0.1);
     pke_enable();
     seq_timer.restart_with_new_time(Delay::pke_start);
+    Sound.TreatmentTone(settings.temperatureActual);
+    Sound.sound_enable();
+    state = State::running;
+    
   }
 }
 
 // moves from any state to off
 void Rf_module::power_off()
 {
-  set_dac_voltage(0);
-  set_opamp_on_input_float();
+  rtsys.stop_treatment();
+  settings.rfPowerOn = 0;
+  set_dac_voltage(0.1);
   pke_disable();
   module_reenable_lockout_timer.restart();
   state = State::off;
   trip_cause = Trip_cause::undef;
+  resetValues();
+  Sound.sound_disable();
+
 }
 
 // no effect outside of running state
 void Rf_module::set_primary_voltage_rms(float v)
 {
   //if(state == State::running) {
-    float v_sat = limit(v, U_min, U_max);
-    float adc_voltage = v_sat/(G_dac_to_pri*V_vga);
-    set_dac_voltage(adc_voltage);
+    set_dac_voltage(v);
   //}
 }
 
@@ -83,7 +98,7 @@ float Rf_module::get_primary_voltage_rms()
 }
 
 // only valid in running state
-float Rf_module::get_primary_current_rms()
+float Rf_module::get_primary_current()
 {
   if(state != State::off)
     return primary_current_rms;
@@ -117,6 +132,7 @@ float Rf_module::get_max_primary_voltage_rms()
 void Rf_module::state_running() {
   update_readings();
   assure_safe_operating_point();
+  Sound.TreatmentTone(settings.temperatureActual);
 }
 
 // this is a transitional state, implementing a timed sequence of steps
@@ -125,71 +141,44 @@ void Rf_module::state_enabling()
 {
   // use safe default values
   uint32_t duration = 0;
-  Rf_enabling_step next_step = Rf_enabling_step::s0_undef;
-
-    // delay next transition until the current state's wait time is over
-    if (seq_timer.is_expired()) {
-      
-      // switch cases define transition actions to next step & its duration
-      switch (rf_enabling_step) {
-        case Rf_enabling_step::s0_undef:
-          break;
-        case Rf_enabling_step::s1_power_up:
-            next_step = Rf_enabling_step::s2_opamp_enable;
-            set_opamp_on_input_pull_low();// activate opamp
-            duration = Delay::opamp_enable;
-          break;
-        case Rf_enabling_step::s2_opamp_enable:
-            next_step = Rf_enabling_step::s3_enable_current_limit;
-            set_opamp_on_input_float();
-            duration = Delay::current_limit_enable;
-          break;
-        case Rf_enabling_step::s3_enable_current_limit:
-            next_step = Rf_enabling_step::s4_stabilize_readings;
-            set_primary_voltage_rms(U_min);
-            duration = Delay::stabilize_readings;
-          break;
-        case Rf_enabling_step::s4_stabilize_readings:
-            next_step = Rf_enabling_step::s5_running;
-            update_readings();
-            state = State::running;
-          break;
-        case Rf_enabling_step::s5_running:
-            // we should not arrive here
-          break;
-      }
-      rf_enabling_step = next_step;
-      seq_timer.restart_with_new_time(duration);
-    }
+  seq_timer.restart_with_new_time(duration);
 }
+
 
 // updates current measurement and estimates for other quantities
 //TODO: add fiter for estimates
 void Rf_module::update_readings()
 {
   volatile float dac = get_dac_voltage();
-  volatile float vprim_rms = V_vga*dac*G_dac_to_pri;
-  volatile float vadc = read_adc_voltage();
-  primary_current_rms = vadc*G_i_pri_to_adc;
-  load_resistance_estimate = vprim_rms / primary_current_rms * T_ratio;
-  power_estimate = primary_current_rms * vprim_rms;
+  vdc = read_RFVDC();
+  idc = read_RFI();
+  volatile float phi = read_RFPHI();
+  load_resistance_estimate = vdc/idc;
+  power_estimate = idc * vdc;
 }
 
 void Rf_module::assure_safe_operating_point()
 {
   Trip_cause cause = Trip_cause::undef;
 
-  if (primary_current_rms < I_min_running)
-    cause = Trip_cause::opamp_protection;
-  else if (primary_current_rms > I_max)
+
+  if (idc > I_max)
     cause = Trip_cause::overcurrent_measured;
+  else if(settings.temperatureActual<30)
+    cause = Trip_cause::temp_low;
+  else if(settings.temperatureActual>55)
+    cause = Trip_cause::temp_high;
+  /*
   else if (load_resistance_estimate < Rl_min)
     cause = Trip_cause::rl_estimate_too_low;
+
   else if (load_resistance_estimate > Rl_max)
     cause = Trip_cause::rl_estimate_too_low;
+*/
 
   if(cause != Trip_cause::undef) {
     power_off();
+    errorFlag = 1;
     this->state = State::tripped;        
   }
   this->trip_cause = cause;
@@ -210,32 +199,26 @@ void Rf_module::pke_disable()
   hw.pke_disable();
   dio.pke_enable = false;
 }
-// Floats AD4870 ON_ pin -> if the AD4870 is already on, it activates
-// the 1A current limit. Use this as default state at power up.
-void Rf_module::set_opamp_on_input_float()
-{
-  hw.set_opamp_on_input_float();
-  dio.opamp_on_input_float = true;
-}
-// Takes AD4870 ON_ to LOW -> if the its output was off it switches now on,
-// but without current limit.
-void Rf_module::set_opamp_on_input_pull_low()
-{
-  hw.set_opamp_on_input_pull_low();
-  dio.opamp_on_input_float = false;
-}
 
 
-void Rf_module::set_debug_pin_state(bool state)
-{
-  hw.set_debug_pin_state(state);
-}
 
 // returns the raw voltage at the ADC input for the primary side RMS current
-float Rf_module::read_adc_voltage()
+float Rf_module::read_RFVDC()
 {
-  dio.adc_voltage = hw.read_adc_voltage();
-  return dio.adc_voltage;
+  dio.RF_VDC = hw.read_adc_VDC();
+  return dio.RF_VDC;
+}
+
+float Rf_module::read_RFI()
+{
+  dio.RF_IDC = hw.read_adc_IDC();
+  return dio.RF_IDC;
+}
+
+float Rf_module::read_RFPHI()
+{
+  dio.RF_PHI = hw.read_adc_phi();
+  return dio.RF_PHI;
 }
 
 // sets raw voltage DAC connected to the VGA -> controls RF amplitude
@@ -248,4 +231,12 @@ void Rf_module::set_dac_voltage(float v)
 float Rf_module::get_dac_voltage()
 {
   return dio.dac_voltage;
+}
+
+
+void 
+Rf_module::resetValues()
+{
+  idc = 0;
+  vdc = 0;
 }

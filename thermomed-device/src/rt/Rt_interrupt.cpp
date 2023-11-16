@@ -6,11 +6,8 @@
 
 extern "C" {
 
-void
-HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
-{
-    rtsys.rt_callback();
-}
+
+
 
 void
 HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
