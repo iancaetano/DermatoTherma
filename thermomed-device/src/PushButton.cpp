@@ -10,7 +10,7 @@
  * PushButtonHandler
  */
 
-
+PushButtonEvent         testitestii;
 
 class PushButtonHandlerDefault : public PushButtonHandler {
     public:
@@ -107,7 +107,7 @@ PushButton::checkPin()
     } else if (m_handlerType == HANDLER_FUNC && m_handlerFunc != nullptr) {
         m_handlerFunc(m_pin, m_lastEvent);
     }
-
+    testitestii = m_lastEvent;
     return m_lastEvent;
 }
 

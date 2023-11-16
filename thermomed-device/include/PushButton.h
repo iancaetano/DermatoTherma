@@ -2,13 +2,17 @@
 
 #include <stdint.h>
 
+
 enum PushButtonEvent {
     PUSH_BUTTON_NONE = 0,
     PUSH_BUTTON_PRESS,
     PUSH_BUTTON_PRESS_EDGE,
     PUSH_BUTTON_RELEASE,
+
     PUSH_BUTTON_RELEASE_EDGE
 };
+
+
 
 typedef void (*PushButtonHandlerFunc)(int pin, PushButtonEvent event);
 
@@ -33,10 +37,11 @@ class PushButton {
         PushButtonHandlerType   m_handlerType;
         PushButtonHandler&      m_handler;
         PushButtonHandlerFunc   m_handlerFunc;
-
         PushButtonEvent         m_lastEvent;
+        
 
     public:
+        
                         PushButton(int pin);
                         PushButton(int pin, PushButtonHandler& handler);
                         PushButton(int pin, PushButtonHandlerFunc handler);

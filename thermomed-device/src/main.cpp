@@ -61,7 +61,7 @@ setup() {
     Serial.println("display done");
 
     encoder.begin();
-    //encoder.start();
+    encoder.start();
     Serial.println("encoder done");
 
     Handset.init();

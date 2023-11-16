@@ -1447,11 +1447,11 @@ BQ25792::loop()
         result = bq25792.get_VBAT_ADC(&vbat_adc);
 
         if (result) {
-            if      (vbat_adc <= 13000)                         settings.batteryLevel = 1;
-            else if (vbat_adc <= 14000 && vbat_adc > 13000)     settings.batteryLevel = 2;
-            else if (vbat_adc <= 15000 && vbat_adc > 14000)     settings.batteryLevel = 3;
-            else if (vbat_adc <= 16000 && vbat_adc > 15000)     settings.batteryLevel = 4;
-            else if (                     vbat_adc > 16000)     settings.batteryLevel = 5;
+            if      (vbat_adc <= 11000)                         settings.batteryLevel = 1;
+            else if (vbat_adc <= 12000 && vbat_adc > 11000)     settings.batteryLevel = 2;
+            else if (vbat_adc <= 13000 && vbat_adc > 12000)     settings.batteryLevel = 3;
+            else if (vbat_adc <= 14000 && vbat_adc > 13000)     settings.batteryLevel = 4;
+            else if (                     vbat_adc > 14000)     settings.batteryLevel = 5;
         }
 
         result = bq25792.get_Charger_Status(&charger_status);

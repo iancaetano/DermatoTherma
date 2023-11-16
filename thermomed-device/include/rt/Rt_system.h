@@ -52,6 +52,16 @@ class Rt_system {
     inline float get_temp_sp() { return iv.temp_sp; }
     /******/
 
+    struct Input_vars {
+      bool grid_connected;
+      float temp_pv;
+      uint32_t temp_pv_tstmp_ms;
+      float temp_sp;
+      bool start_treatment;
+      int stop_treatment;
+      
+    };
+
   private:
     /*** components of RT subsystem ***/
     // HAL for RF module
@@ -72,16 +82,8 @@ class Rt_system {
     /*** input from main loop ***/
     // use this struct only for communication with main loop
     // fields are updated via RT_system's input methods
-    struct Input_vars {
-      bool grid_connected;
-      float temp_pv;
-      uint32_t temp_pv_tstmp_ms;
-      float temp_sp;
-      bool start_treatment;
-      bool stop_treatment;
-      
-    };
-    volatile bool ivs_in_use;// mutex var, written by main loop, read by rt loop
+
+    volatile uint32_t ivs_in_use;// mutex var, written by main loop, read by rt loop
     struct Input_vars ivs; // shared input variables, written by main loop
     struct Input_vars iv; // internal copy
     /******/

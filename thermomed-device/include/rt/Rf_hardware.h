@@ -10,7 +10,7 @@ class Rf_hardware {
     public:
     
         float adc_value_I;
-        float value;
+        volatile float value;
         float dummy_IDC;
 
         Rf_hardware();

@@ -35,8 +35,8 @@ uint32_t adc_values[3];
 uint32_t lastADCValue[3] = {0};
 bool firstReadI = 1;
 
-const float Rf_hardware::GAIN_CONTROL_MIN = 0.0f;
-const float Rf_hardware::GAIN_CONTROL_MAX = 1.5f;
+const float Rf_hardware::GAIN_CONTROL_MIN = 3000.0f;
+const float Rf_hardware::GAIN_CONTROL_MAX = 4000.0f;
 
 static TIM_HandleTypeDef            htim2;
 static ADC_HandleTypeDef            hadc1;
@@ -362,8 +362,8 @@ float
 Rf_hardware::read_adc_IDC()
 {
 
-    float Rshunt = 0.1;
-    float AmpGain = 10;
+    float Rshunt = 0.05;
+    float AmpGain = 20;
     float Ioffset = 0.5;
     float idc = (ADC_VCC/ADC_12BIT*adc_values[1]-Ioffset)/Rshunt/AmpGain;
     dummy_IDC = idc;
@@ -386,14 +386,19 @@ void
 Rf_hardware::set_dac_voltage(float v)
 {
     
-    if (v < GAIN_CONTROL_MIN) {
-        v = GAIN_CONTROL_MIN;
-    } else if (v > GAIN_CONTROL_MAX) {
-        v = GAIN_CONTROL_MAX;
+    value = ADC_VCC-v;
+    value = value/ADC_VCC;
+    value = value*ADC_12BIT;
+    //value = (ADC_12BIT * (ADC_VCC-value/ ADC_VCC));
+
+    if (value < GAIN_CONTROL_MIN) {
+        value = GAIN_CONTROL_MIN;
+    } else if (value > GAIN_CONTROL_MAX) {
+        value = GAIN_CONTROL_MAX;
     }
     
-    value = static_cast<uint32_t>(ADC_12BIT * (1-v/ ADC_VCC));
-    
+    value = static_cast<uint32_t>(value);
+
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, value);
 }
 

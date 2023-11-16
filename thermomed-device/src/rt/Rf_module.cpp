@@ -51,8 +51,8 @@ void Rf_module::enable()
   if(state == State::off || state == State::tripped) {
     trip_cause = Trip_cause::undef;
     state = State::enabling;
-    // transition into first first step of enabling sequence 
-    set_primary_voltage_rms(0.1);
+    // transition into first first step of enabling sequence
+    set_primary_voltage_rms(0.1); 
     pke_enable();
     seq_timer.restart_with_new_time(Delay::pke_start);
     Sound.TreatmentTone(settings.temperatureActual);
@@ -162,12 +162,15 @@ void Rf_module::assure_safe_operating_point()
   Trip_cause cause = Trip_cause::undef;
 
 
-  if (idc > I_max)
+  if (idc > I_max){
     cause = Trip_cause::overcurrent_measured;
-  else if(settings.temperatureActual<30)
-    cause = Trip_cause::temp_low;
-  else if(settings.temperatureActual>55)
+  }
+  //else if(settings.temperatureActual<30)
+  //  cause = Trip_cause::temp_low;
+  else if(settings.temperatureActual>55){
     cause = Trip_cause::temp_high;
+    int I = 1;
+  }
   /*
   else if (load_resistance_estimate < Rl_min)
     cause = Trip_cause::rl_estimate_too_low;

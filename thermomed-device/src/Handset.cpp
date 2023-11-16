@@ -117,7 +117,7 @@ void HandsetClass::handle(){
 
     //uint32_t now = millis();
 
-    startButton.checkPin();
+    //startButton.checkPin();
 
     /* count 1 sec. after boot 
     if (now > 1000) {
